@@ -13,6 +13,7 @@
 static const uint32_t VkHelloImageWidth = 256;
 static const uint32_t VkHelloImageHeight = 256;
 
+
 void printDeviceMemoryProperties(
 	VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties)
 {
@@ -55,6 +56,55 @@ void printDeviceMemoryProperties(
 		}
 	}
 }
+
+int32_t memoryTypeIndexWithGivenProperties(
+	VkPhysicalDeviceMemoryProperties deviceMemoryProperties,
+	VkMemoryPropertyFlags requiredFlags)
+{
+	///@todo Add Verbosity Level
+	//	printDeviceMemoryProperties(physicalDeviceMemoryProperties);
+
+	int32_t memoryType = -1;
+	for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; ++i)
+	{
+		if ((deviceMemoryProperties.memoryTypes[i].propertyFlags & requiredFlags) != 0)
+		{
+			VkMemoryPropertyFlags heapFlags = deviceMemoryProperties.memoryTypes[i].propertyFlags;
+
+			if (((VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT & requiredFlags) != 0) &&
+				((VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT & heapFlags) == 0))
+			{
+				continue;
+			}
+			if (((VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT & requiredFlags) != 0) &&
+				((VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT & heapFlags) == 0))
+			{
+				continue;
+			}
+			if (((VK_MEMORY_PROPERTY_HOST_COHERENT_BIT & requiredFlags) != 0) &&
+				((VK_MEMORY_PROPERTY_HOST_COHERENT_BIT & heapFlags) == 0))
+			{
+				continue;
+			}
+			if (((VK_MEMORY_PROPERTY_HOST_CACHED_BIT & requiredFlags) != 0) &&
+				((VK_MEMORY_PROPERTY_HOST_CACHED_BIT & heapFlags) == 0))
+			{
+				continue;
+			}
+			if (((VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT & requiredFlags) != 0) &&
+				((VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT & heapFlags) == 0))
+			{
+				continue;
+			}
+
+			memoryType = i;
+			break;
+		}
+	}
+
+	return memoryType;
+}
+
 
 void createFramebuffer(
 	VkDevice device,
@@ -320,9 +370,6 @@ VkResult createGraphicsPipeline(
 
 int main()
 {
-	// Allocate some additional resources
-
-
 	Ivy::IvyWindow* pWindow = Ivy::IvyWindow::Create(VkHelloImageWidth, VkHelloImageHeight);
 	pWindow->Show();
 
@@ -382,6 +429,7 @@ int main()
 	};
 
 
+
 	VkInstanceCreateInfo instanceInfo = {};
 	VkApplicationInfo appInfo = {};
 
@@ -425,10 +473,6 @@ int main()
 
 	VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties = {};
 	vkGetPhysicalDeviceMemoryProperties(physicalDevices[0], &physicalDeviceMemoryProperties);
-
-	///@todo Add Verbosity Level
-	//printDeviceMemoryProperties(physicalDeviceMemoryProperties);
-
 
 	static const uint32_t MaxQueues = 10;
 	uint32_t queueFamilyPropertiesCount = MaxQueues;
@@ -617,7 +661,7 @@ int main()
 		allocateInfo.allocationSize = memoryRequirements.size;
 
 		// memoryRequirements.memoryTypeBits;
-		allocateInfo.memoryTypeIndex = 8;
+		allocateInfo.memoryTypeIndex = memoryTypeIndexWithGivenProperties(physicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 		VkDeviceMemory memory;
 		err = vkAllocateMemory(device, &allocateInfo, NULL, &memory);
@@ -671,7 +715,7 @@ int main()
 
 	VkDeviceMemory vertexBufferMemory;
 	
-	allocateInfo.memoryTypeIndex = 9; // 9 = host visible
+	allocateInfo.memoryTypeIndex = memoryTypeIndexWithGivenProperties(physicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	err = vkAllocateMemory(device, &allocateInfo, NULL, &vertexBufferMemory);
 
 	err = vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
