@@ -14,6 +14,38 @@ static const uint32_t VkHelloImageWidth = 256;
 static const uint32_t VkHelloImageHeight = 256;
 
 
+const char* RequiredInstanceExtensionNames[] =
+{
+	"VK_EXT_debug_report",
+	"VK_KHR_surface",
+	"VK_KHR_win32_surface"
+};
+
+const uint32_t RequiredInstanceExtensionCount = sizeof(RequiredInstanceExtensionNames) / sizeof(RequiredInstanceExtensionNames[0]);
+
+const char* RequiredDeviceExtensionNames[] =
+{
+	"VK_KHR_swapchain",
+	//"VK_NV_glsl_shader"
+};
+
+const uint32_t RequiredDeviceExtensionCount = sizeof(RequiredDeviceExtensionNames) / sizeof(RequiredDeviceExtensionNames[0]);
+
+const char* RequiredLayerNames[] =
+{
+	//	"VK_LAYER_LUNARG_api_dump",
+	"VK_LAYER_LUNARG_core_validation",
+	//"VK_LAYER_LUNARG_device_limits",
+	"VK_LAYER_LUNARG_image",
+	//"VK_LAYER_LUNARG_mem_tracker",
+	"VK_LAYER_LUNARG_swapchain",
+	"VK_LAYER_LUNARG_object_tracker",
+	"VK_LAYER_LUNARG_standard_validation",
+};
+
+const uint32_t RequiredLayerCount = sizeof(RequiredLayerNames) / sizeof(RequiredLayerNames[0]);
+
+
 void printDeviceMemoryProperties(
 	VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties)
 {
@@ -368,132 +400,200 @@ VkResult createGraphicsPipeline(
 	return vkResult;
 }
 
+// Checks if all app-required extensions are available, returns false on first one found not to be present, else true
+bool checkRequiredInstanceExtensionsAvailable()
+{
+	bool success = true;
+
+	uint32_t instanceExtensionCount = 0;
+	VkResult err = vkEnumerateInstanceExtensionProperties(NULL, &instanceExtensionCount, NULL);
+	VkExtensionProperties* pInstanceExtensions = new VkExtensionProperties[instanceExtensionCount];
+	err = vkEnumerateInstanceExtensionProperties(NULL, &instanceExtensionCount, pInstanceExtensions);
+
+	for (uint32_t ri = 0; ri < RequiredInstanceExtensionCount; ++ri)
+	{
+		uint32_t requiredNameLength = strlen(RequiredInstanceExtensionNames[ri]);
+		bool foundExtension = false;
+		for (uint32_t qi = 0; qi < instanceExtensionCount; ++qi)
+		{
+			if ((strlen(pInstanceExtensions[qi].extensionName) == requiredNameLength) &&
+				(strncmp(pInstanceExtensions[qi].extensionName, RequiredInstanceExtensionNames[ri], requiredNameLength) == 0))
+			{
+				foundExtension = true;
+				break;
+			}
+		}
+
+		if (foundExtension == false)
+		{
+			std::cout << "Required extension " << RequiredInstanceExtensionNames[ri] << " is not available." << std::endl;
+			success = false;
+			break;
+		}
+	}
+
+	delete[] pInstanceExtensions;
+
+	return success;
+}
+
+bool checkRequiredInstanceLayersAvailable()
+{
+	bool success = true;
+
+	uint32_t layerPropertyCount = 0;
+	vkEnumerateInstanceLayerProperties(&layerPropertyCount, NULL);
+	VkLayerProperties* pLayerProperties = new VkLayerProperties[layerPropertyCount];
+	vkEnumerateInstanceLayerProperties(&layerPropertyCount, &pLayerProperties[0]);
+
+	for (uint32_t ri = 0; ri < RequiredLayerCount; ++ri)
+	{
+		uint32_t requiredNameLength = strlen(RequiredLayerNames[ri]);
+		bool foundLayer = false;
+		for (uint32_t qi = 0; qi < layerPropertyCount; ++qi)
+		{
+			if ((strlen(pLayerProperties[qi].layerName) == requiredNameLength) &&
+				(strncmp(pLayerProperties[qi].layerName, RequiredLayerNames[ri], requiredNameLength) == 0))
+			{
+				foundLayer = true;
+				break;
+			}
+		}
+
+		if (foundLayer == false)
+		{
+			std::cout << "Required layer " << RequiredLayerNames[ri] << " is not available." << std::endl;
+			success = false;
+			break;
+		}
+	}
+
+	delete[] pLayerProperties;
+
+	return success;
+}
+
+bool checkRequiredDeviceExtensionsAvailable(
+	VkPhysicalDevice physicalDevice)
+{
+	bool success = true;
+
+	uint32_t deviceExtensionPropertyCount = 0;
+	vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &deviceExtensionPropertyCount, NULL);
+	VkExtensionProperties* pDeviceExtensionProperties = new VkExtensionProperties[deviceExtensionPropertyCount];
+	vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &deviceExtensionPropertyCount, &pDeviceExtensionProperties[0]);
+
+	for (uint32_t ri = 0; ri < RequiredDeviceExtensionCount; ++ri)
+	{
+		uint32_t requiredNameLength = strlen(RequiredDeviceExtensionNames[ri]);
+		bool foundLayer = false;
+		for (uint32_t qi = 0; qi < deviceExtensionPropertyCount; ++qi)
+		{
+			if ((strlen(pDeviceExtensionProperties[qi].extensionName) == requiredNameLength) &&
+				(strncmp(pDeviceExtensionProperties[qi].extensionName, RequiredDeviceExtensionNames[ri], requiredNameLength) == 0))
+			{
+				foundLayer = true;
+				break;
+			}
+		}
+
+		if (foundLayer == false)
+		{
+			std::cout << "Required device extension " << RequiredDeviceExtensionNames[ri] << " is not available." << std::endl;
+			success = false;
+			break;
+		}
+	}
+
+	delete[] pDeviceExtensionProperties;
+
+	return success;
+}
+
+
 int main()
 {
+	VkResult err;
 	Ivy::IvyWindow* pWindow = Ivy::IvyWindow::Create(VkHelloImageWidth, VkHelloImageHeight);
 	pWindow->Show();
 
-
-	uint32_t instance_extension_count = 0;
-
-	VkResult err = vkEnumerateInstanceExtensionProperties(
-		NULL, &instance_extension_count, NULL);
-
-
-	VkExtensionProperties* instance_extensions = new VkExtensionProperties[instance_extension_count];
-	err = vkEnumerateInstanceExtensionProperties(
-		NULL, &instance_extension_count, instance_extensions);
-
-	for (uint32_t i = 0; i < instance_extension_count; ++i)
+	if ((checkRequiredInstanceExtensionsAvailable() == false) ||
+		(checkRequiredInstanceLayersAvailable() == false))
 	{
-		std::cout << instance_extensions[i].extensionName << std::endl;
-	}
-	delete[] instance_extensions;
-
-	uint32_t layerPropertyCount = 0;
-	err = vkEnumerateInstanceLayerProperties(&layerPropertyCount, NULL);
-
-	const char* instanceExtensionNames[] =
-	{
-		"VK_EXT_debug_report",
-		"VK_KHR_surface",
-		"VK_KHR_win32_surface"
-	};
-
-	const char* deviceExtensionNames[] =
-	{
-		"VK_KHR_swapchain",
-		//"VK_NV_glsl_shader"
-	};
-
-	VkLayerProperties* layerProperties = new VkLayerProperties[layerPropertyCount];
-	vkEnumerateInstanceLayerProperties(&layerPropertyCount, &layerProperties[0]);
-
-	for (uint32_t i = 0; i < layerPropertyCount; ++i)
-	{
-		std::cout << layerProperties[i].layerName << " " << layerProperties[i].description << std::endl;
+		return -1;
 	}
 
-	delete[] layerProperties;
-
-	const char* layerNames[] =
-	{
-		//	"VK_LAYER_LUNARG_api_dump",
-			"VK_LAYER_LUNARG_core_validation",
-			//"VK_LAYER_LUNARG_device_limits",
-			"VK_LAYER_LUNARG_image",
-			//"VK_LAYER_LUNARG_mem_tracker",
-			"VK_LAYER_LUNARG_swapchain",
-			"VK_LAYER_LUNARG_object_tracker",
-			"VK_LAYER_LUNARG_standard_validation",
-	};
-
-
-
-	VkInstanceCreateInfo instanceInfo = {};
 	VkApplicationInfo appInfo = {};
-
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pApplicationName = "VkHello";
 	appInfo.pEngineName = "IVY";
 	appInfo.apiVersion = 1 << 22;
 
+	VkInstanceCreateInfo instanceInfo = {};
 	instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instanceInfo.flags = 0;
 	instanceInfo.pApplicationInfo = &appInfo;
-	instanceInfo.ppEnabledLayerNames = &layerNames[0];
-	instanceInfo.enabledLayerCount = sizeof(layerNames) / sizeof(char*);
-	instanceInfo.ppEnabledExtensionNames = &instanceExtensionNames[0];
-	instanceInfo.enabledExtensionCount = sizeof(instanceExtensionNames) / sizeof(char*);
+	instanceInfo.ppEnabledLayerNames = &RequiredLayerNames[0];
+	instanceInfo.enabledLayerCount = RequiredLayerCount;
+	instanceInfo.ppEnabledExtensionNames = &RequiredInstanceExtensionNames[0];
+	instanceInfo.enabledExtensionCount = RequiredInstanceExtensionCount;
 
 	VkInstance instance = {};
 	VkResult result = vkCreateInstance(&instanceInfo, NULL, &instance);
 
 
-	static const uint32_t MaxDevices = 4;
-	uint32_t physicalDeviceCount = MaxDevices;
-	VkPhysicalDevice physicalDevices[MaxDevices];
-
-	err = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, &physicalDevices[0]);
+	uint32_t physicalDeviceCount;
+	err = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, NULL);
+	VkPhysicalDevice* pPhysicalDevices = new VkPhysicalDevice[physicalDeviceCount];
+	err = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, &pPhysicalDevices[0]);
 
 	VkPhysicalDeviceProperties physicalDeviceProperties = {};
-	vkGetPhysicalDeviceProperties(physicalDevices[0], &physicalDeviceProperties);
+	vkGetPhysicalDeviceProperties(pPhysicalDevices[0], &physicalDeviceProperties);
 
-	uint32_t propertyCount = 0;
-	err = vkEnumerateDeviceExtensionProperties(physicalDevices[0], NULL, &propertyCount, NULL);
-
-	VkExtensionProperties* extensionProperties = new VkExtensionProperties[propertyCount];
-	err = vkEnumerateDeviceExtensionProperties(physicalDevices[0], NULL, &propertyCount, &extensionProperties[0]);
-
-	for (uint32_t i = 0; i < propertyCount; i++)
+	if (checkRequiredDeviceExtensionsAvailable(pPhysicalDevices[0]) == false)
 	{
-		std::cout << extensionProperties[i].extensionName << std::endl;
+		return -1;
 	}
 
-
 	VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties = {};
-	vkGetPhysicalDeviceMemoryProperties(physicalDevices[0], &physicalDeviceMemoryProperties);
+	vkGetPhysicalDeviceMemoryProperties(pPhysicalDevices[0], &physicalDeviceMemoryProperties);
 
-	static const uint32_t MaxQueues = 10;
-	uint32_t queueFamilyPropertiesCount = MaxQueues;
-	VkQueueFamilyProperties queueFamilyProperties[MaxQueues] = {};
 
-	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevices[0], &queueFamilyPropertiesCount, &queueFamilyProperties[0]);
+	uint32_t queueFamilyPropertiesCount;
+	vkGetPhysicalDeviceQueueFamilyProperties(pPhysicalDevices[0], &queueFamilyPropertiesCount, NULL);
+	VkQueueFamilyProperties* pQueueFamilyProperties = new VkQueueFamilyProperties[queueFamilyPropertiesCount];
 
-	uint32_t vkHelloQueueFamilyIndex = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(pPhysicalDevices[0], &queueFamilyPropertiesCount, &pQueueFamilyProperties[0]);
 
-	VkBool32 presentSupported = vkGetPhysicalDeviceWin32PresentationSupportKHR(physicalDevices[0], vkHelloQueueFamilyIndex);
+	int32_t vkHelloGraphicsComputeQueueFamilyIndex = -1;
+
+	// get graphics queue that supports presents
+	for (uint32_t i = 0; i < queueFamilyPropertiesCount; ++i)
+	{
+		if (((pQueueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) ||
+			((pQueueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+		{
+			continue;
+		}
+
+		if (vkGetPhysicalDeviceWin32PresentationSupportKHR(pPhysicalDevices[0], i) == VK_FALSE)
+		{
+			continue;
+		}
+
+		vkHelloGraphicsComputeQueueFamilyIndex = i;
+	}
+
 
 
 	// Setup Create Queue Info
 	static const uint32_t RequestedQueues = 1;
 	float queuePriorities[] = { 1.0 };
-	uint32_t vkHelloQueueIndex = 0;
 
 	VkDeviceQueueCreateInfo queueCreateInfo = {};
 
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.queueFamilyIndex = vkHelloQueueFamilyIndex;
+	queueCreateInfo.queueFamilyIndex = vkHelloGraphicsComputeQueueFamilyIndex;
 	queueCreateInfo.queueCount = RequestedQueues;
 	queueCreateInfo.pQueuePriorities = &queuePriorities[0];
 
@@ -503,12 +603,12 @@ int main()
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
 	deviceCreateInfo.queueCreateInfoCount = 1;
-	deviceCreateInfo.ppEnabledExtensionNames = &deviceExtensionNames[0];
-	deviceCreateInfo.enabledExtensionCount = sizeof(deviceExtensionNames) / sizeof(char*);
+	deviceCreateInfo.ppEnabledExtensionNames = &RequiredDeviceExtensionNames[0];
+	deviceCreateInfo.enabledExtensionCount = sizeof(RequiredDeviceExtensionNames) / sizeof(char*);
 
 	VkDevice device = {};
 
-	err = vkCreateDevice(physicalDevices[0], &deviceCreateInfo, NULL, &device);
+	err = vkCreateDevice(pPhysicalDevices[0], &deviceCreateInfo, NULL, &device);
 
 
 	// Have device, now setup swapchain
@@ -526,22 +626,22 @@ int main()
 	result = vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfoKHR, NULL, &surfaceKHR);
 
 	VkSurfaceCapabilitiesKHR surfaceCapabilities;
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevices[0], surfaceKHR, &surfaceCapabilities);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pPhysicalDevices[0], surfaceKHR, &surfaceCapabilities);
 
 
 	uint32_t surfaceFormatCount = 0;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevices[0], surfaceKHR, &surfaceFormatCount, NULL);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(pPhysicalDevices[0], surfaceKHR, &surfaceFormatCount, NULL);
 	VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[surfaceFormatCount];
-	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevices[0], surfaceKHR, &surfaceFormatCount, &surfaceFormats[0]);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(pPhysicalDevices[0], surfaceKHR, &surfaceFormatCount, &surfaceFormats[0]);
 
 
 	uint32_t presentModeCount = 0;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevices[0], surfaceKHR, &presentModeCount, NULL);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(pPhysicalDevices[0], surfaceKHR, &presentModeCount, NULL);
 	VkPresentModeKHR* presentModes = new VkPresentModeKHR[presentModeCount];
-	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevices[0], surfaceKHR, &presentModeCount, &presentModes[0]);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(pPhysicalDevices[0], surfaceKHR, &presentModeCount, &presentModes[0]);
 
 	VkBool32 supported = FALSE;
-	vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevices[0], 0, surfaceKHR, &supported);
+	vkGetPhysicalDeviceSurfaceSupportKHR(pPhysicalDevices[0], 0, surfaceKHR, &supported);
 
 	VkSwapchainCreateInfoKHR swapchainCreateInfoKHR = {};
 	swapchainCreateInfoKHR.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -567,13 +667,14 @@ int main()
 
 	VkQueue queue = {};
 
-	vkGetDeviceQueue(device, vkHelloQueueFamilyIndex, vkHelloQueueIndex, &queue);
+	uint32_t fix = 0;
+	vkGetDeviceQueue(device, vkHelloGraphicsComputeQueueFamilyIndex, fix, &queue);
 
 	// Create Command Pool
 	VkCommandPoolCreateInfo commandPoolCreateInfo = {};
 
 	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	commandPoolCreateInfo.queueFamilyIndex = vkHelloQueueFamilyIndex;
+	commandPoolCreateInfo.queueFamilyIndex = vkHelloGraphicsComputeQueueFamilyIndex;
 	commandPoolCreateInfo.flags = 0;  // flags=0 Choosing to reset buffers in bulk, not per command buffer
 
 
