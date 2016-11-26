@@ -137,6 +137,14 @@ void createPipelineLayout(
 		NULL
 	};
 
+	VkPushConstantRange pushConstantRange;
+	pushConstantRange.size   = 16;
+	pushConstantRange.offset = 0;
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	layoutCreateInfo.pushConstantRangeCount = 1;
+	layoutCreateInfo.pPushConstantRanges = &pushConstantRange;
+
 	result = vkCreatePipelineLayout(device, &layoutCreateInfo, NULL, pLayout);
 }
 
@@ -152,7 +160,7 @@ VkResult createGraphicsPipeline(
 
 	std::ifstream vsFile = std::ifstream("vert.spv", std::ios::ate | std::ios::binary);
 
-	size_t shader_size = vsFile.tellg();
+	size_t shader_size = static_cast<size_t>(vsFile.tellg());
 	std::vector<char> vert_shader(shader_size);
 	vsFile.seekg(0);
 	vsFile.read(vert_shader.data(), shader_size);
@@ -160,7 +168,7 @@ VkResult createGraphicsPipeline(
 
 	std::ifstream fsFile = std::ifstream("frag.spv", std::ios::ate | std::ios::binary);
 
-	shader_size = fsFile.tellg();
+	shader_size = static_cast<size_t>(fsFile.tellg());
 	std::vector<char> frag_shader(shader_size);
 	fsFile.seekg(0);
 	fsFile.read(frag_shader.data(), shader_size);
@@ -196,11 +204,29 @@ VkResult createGraphicsPipeline(
 	shaderStageCreateInfo[1].pName = "main";
 
 
+	// VERTEX BUFFER DATA
+
+	// Position
+	VkVertexInputAttributeDescription vertexAttributeDescription;
+	vertexAttributeDescription.binding  = 0;
+	vertexAttributeDescription.format   = VK_FORMAT_R32G32B32A32_SFLOAT;
+	vertexAttributeDescription.location = 0;
+	vertexAttributeDescription.offset   = 0;
+
+
+	VkVertexInputBindingDescription vertexBindingDescription;
+	vertexBindingDescription.binding = 0;
+	vertexBindingDescription.stride = 16;
+	vertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+
 	VkPipelineVertexInputStateCreateInfo	vertexInputState;
 	memset(&vertexInputState, 0, sizeof(VkPipelineVertexInputStateCreateInfo));
 	vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputState.vertexBindingDescriptionCount = 0;
-	vertexInputState.pVertexAttributeDescriptions = 0;
+	vertexInputState.vertexBindingDescriptionCount   = 1;
+	vertexInputState.pVertexBindingDescriptions = &vertexBindingDescription;
+	vertexInputState.vertexAttributeDescriptionCount = 1;
+	vertexInputState.pVertexAttributeDescriptions = &vertexAttributeDescription;
 	
 	VkPipelineInputAssemblyStateCreateInfo	inputAssemblyState;
 	memset(&inputAssemblyState, 0, sizeof(VkPipelineInputAssemblyStateCreateInfo));
@@ -344,43 +370,43 @@ int main()
 	};
 
 	VkLayerProperties* layerProperties = new VkLayerProperties[layerPropertyCount];
-    memset(&layerProperties[0], 0, sizeof(VkLayerProperties)*layerPropertyCount);
-	
+	memset(&layerProperties[0], 0, sizeof(VkLayerProperties)*layerPropertyCount);
+
 	vkEnumerateInstanceLayerProperties(&layerPropertyCount, &layerProperties[0]);
 
-    for (uint32_t i = 0; i < layerPropertyCount; ++i)
-    {
+	for (uint32_t i = 0; i < layerPropertyCount; ++i)
+	{
 		std::cout << layerProperties[i].layerName << " " << layerProperties[i].description << std::endl;
-    }
+	}
 
 	delete[] layerProperties;
 
 	const char* layerNames[] =
 	{
-	//	"VK_LAYER_LUNARG_api_dump",
-		"VK_LAYER_LUNARG_core_validation",
-		//"VK_LAYER_LUNARG_device_limits",
-		"VK_LAYER_LUNARG_image",
-		//"VK_LAYER_LUNARG_mem_tracker",
-		"VK_LAYER_LUNARG_swapchain",
-		"VK_LAYER_LUNARG_object_tracker",
-		"VK_LAYER_LUNARG_standard_validation",
+		//	"VK_LAYER_LUNARG_api_dump",
+			"VK_LAYER_LUNARG_core_validation",
+			//"VK_LAYER_LUNARG_device_limits",
+			"VK_LAYER_LUNARG_image",
+			//"VK_LAYER_LUNARG_mem_tracker",
+			"VK_LAYER_LUNARG_swapchain",
+			"VK_LAYER_LUNARG_object_tracker",
+			"VK_LAYER_LUNARG_standard_validation",
 	};
 
 
-    VkInstanceCreateInfo instanceInfo;
-    memset(&instanceInfo, 0, sizeof(VkInstanceCreateInfo));
+	VkInstanceCreateInfo instanceInfo;
+	memset(&instanceInfo, 0, sizeof(VkInstanceCreateInfo));
 
-    VkApplicationInfo appInfo;
-    memset(&appInfo, 0, sizeof(VkApplicationInfo));
-    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = "VkHello";
-    appInfo.pEngineName = "IVY";
-    appInfo.apiVersion = 1 << 22;
+	VkApplicationInfo appInfo;
+	memset(&appInfo, 0, sizeof(VkApplicationInfo));
+	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+	appInfo.pApplicationName = "VkHello";
+	appInfo.pEngineName = "IVY";
+	appInfo.apiVersion = 1 << 22;
 
-    instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    instanceInfo.flags = 0;
-    instanceInfo.pApplicationInfo = &appInfo;
+	instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+	instanceInfo.flags = 0;
+	instanceInfo.pApplicationInfo = &appInfo;
 	instanceInfo.ppEnabledLayerNames = &layerNames[0];
 	instanceInfo.enabledLayerCount = sizeof(layerNames) / sizeof(char*);
 	instanceInfo.ppEnabledExtensionNames = &instanceExtensionNames[0];
@@ -388,7 +414,7 @@ int main()
 
 	VkInstance instance;
 	memset(&instance, 0, sizeof(VkInstance));
-	
+
 	VkResult result = vkCreateInstance(&instanceInfo, NULL, &instance);
 
 
@@ -419,7 +445,7 @@ int main()
 	vkGetPhysicalDeviceMemoryProperties(physicalDevices[0], &physicalDeviceMemoryProperties);
 
 	///@todo Add Verbosity Level
-	// printDeviceMemoryProperties(physicalDeviceMemoryProperties);
+	//printDeviceMemoryProperties(physicalDeviceMemoryProperties);
 
 
 	static const uint32_t MaxQueues = 10;
@@ -441,17 +467,17 @@ int main()
 
 	VkDeviceQueueCreateInfo queueCreateInfo;
 	memset(&queueCreateInfo, 0, sizeof(VkDeviceQueueCreateInfo));
-	queueCreateInfo.sType		     = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 	queueCreateInfo.queueFamilyIndex = vkHelloQueueFamilyIndex;
-	queueCreateInfo.queueCount       = RequestedQueues;
+	queueCreateInfo.queueCount = RequestedQueues;
 	queueCreateInfo.pQueuePriorities = &queuePriorities[0];
 
 	// Create VkDevice
 	VkDeviceCreateInfo deviceCreateInfo;
 	memset(&deviceCreateInfo, 0, sizeof(VkDeviceCreateInfo));
 
-	deviceCreateInfo.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	deviceCreateInfo.pQueueCreateInfos    = &queueCreateInfo;
+	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
 	deviceCreateInfo.queueCreateInfoCount = 1;
 	deviceCreateInfo.ppEnabledExtensionNames = &deviceExtensionNames[0];
 	deviceCreateInfo.enabledExtensionCount = sizeof(deviceExtensionNames) / sizeof(char*);
@@ -462,9 +488,9 @@ int main()
 
 
 	// Have device, now setup swapchain
-	
-	
-	
+
+
+
 	VkWin32SurfaceCreateInfoKHR surfaceCreateInfoKHR;
 	memset(&surfaceCreateInfoKHR, 0, sizeof(VkWin32SurfaceCreateInfoKHR));
 	surfaceCreateInfoKHR.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
@@ -480,7 +506,7 @@ int main()
 
 
 	uint32_t surfaceFormatCount = 0;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevices[0], surfaceKHR, &surfaceFormatCount,  NULL);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevices[0], surfaceKHR, &surfaceFormatCount, NULL);
 	VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[surfaceFormatCount];
 	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevices[0], surfaceKHR, &surfaceFormatCount, &surfaceFormats[0]);
 
@@ -495,18 +521,18 @@ int main()
 
 	VkSwapchainCreateInfoKHR swapchainCreateInfoKHR;
 	memset(&swapchainCreateInfoKHR, 0, sizeof(VkSwapchainCreateInfoKHR));
-	swapchainCreateInfoKHR.sType			  = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	swapchainCreateInfoKHR.minImageCount	  = surfaceCapabilities.minImageCount;
-	swapchainCreateInfoKHR.surface			  = surfaceKHR;
-	swapchainCreateInfoKHR.imageExtent.width  = surfaceCapabilities.currentExtent.width;
+	swapchainCreateInfoKHR.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchainCreateInfoKHR.minImageCount = surfaceCapabilities.minImageCount;
+	swapchainCreateInfoKHR.surface = surfaceKHR;
+	swapchainCreateInfoKHR.imageExtent.width = surfaceCapabilities.currentExtent.width;
 	swapchainCreateInfoKHR.imageExtent.height = surfaceCapabilities.currentExtent.width;
-	swapchainCreateInfoKHR.imageFormat		  = VK_FORMAT_B8G8R8A8_UNORM;
-	swapchainCreateInfoKHR.imageUsage		  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	swapchainCreateInfoKHR.imageColorSpace	  = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-	swapchainCreateInfoKHR.imageArrayLayers   = 1;
-	swapchainCreateInfoKHR.compositeAlpha	  = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	swapchainCreateInfoKHR.preTransform		  = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-	swapchainCreateInfoKHR.presentMode        = VK_PRESENT_MODE_FIFO_KHR;
+	swapchainCreateInfoKHR.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+	swapchainCreateInfoKHR.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	swapchainCreateInfoKHR.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+	swapchainCreateInfoKHR.imageArrayLayers = 1;
+	swapchainCreateInfoKHR.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	swapchainCreateInfoKHR.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	swapchainCreateInfoKHR.presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
 	///@TODO finish setup!!!
 
@@ -523,9 +549,9 @@ int main()
 	// Create Command Pool
 	VkCommandPoolCreateInfo commandPoolCreateInfo;
 	memset(&commandPoolCreateInfo, 0, sizeof(VkCommandPoolCreateInfo));
-	commandPoolCreateInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	commandPoolCreateInfo.queueFamilyIndex = vkHelloQueueFamilyIndex;
-	commandPoolCreateInfo.flags            = 0;  // flags=0 Choosing to reset buffers in bulk, not per command buffer
+	commandPoolCreateInfo.flags = 0;  // flags=0 Choosing to reset buffers in bulk, not per command buffer
 
 
 	VkCommandPool commandPool;
@@ -534,94 +560,96 @@ int main()
 
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo;
 	memset(&commandBufferAllocateInfo, 0, sizeof(VkCommandBufferAllocateInfo));
-	commandBufferAllocateInfo.sType				 = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	commandBufferAllocateInfo.commandPool		 = commandPool;
+	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	commandBufferAllocateInfo.commandPool = commandPool;
 	commandBufferAllocateInfo.commandBufferCount = 1;
-	commandBufferAllocateInfo.level				 = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-    VkCommandBuffer commandBuffer;
-    memset(&commandBuffer, 0, sizeof(VkCommandBuffer));
-    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer);
+	VkCommandBuffer commandBuffer;
+	memset(&commandBuffer, 0, sizeof(VkCommandBuffer));
+	vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer);
 
-    ///@todo finish creating image view, framebuffer, render pass 
+	///@todo finish creating image view, framebuffer, render pass 
 
 
-    VkAttachmentDescription colorAttachmentDescription;
-    memset(&colorAttachmentDescription, 0, sizeof(VkAttachmentDescription));
-    colorAttachmentDescription.format         = VK_FORMAT_B8G8R8A8_UNORM;
-    colorAttachmentDescription.samples        = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachmentDescription.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachmentDescription.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachmentDescription.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	VkAttachmentDescription colorAttachmentDescription;
+	memset(&colorAttachmentDescription, 0, sizeof(VkAttachmentDescription));
+	colorAttachmentDescription.format = VK_FORMAT_B8G8R8A8_UNORM;
+	colorAttachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachmentDescription.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED; // VK_IMAGE_LAYOUT_UNDEFINED; // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colorAttachmentDescription.finalLayout    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // VK_IMAGE_LAYOUT_UNDEFINED; // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    VkSubpassDescription subpassDescription;
-    memset(&subpassDescription, 0, sizeof(VkSubpassDescription));
-    subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	VkSubpassDescription subpassDescription;
+	memset(&subpassDescription, 0, sizeof(VkSubpassDescription));
+	subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-    // Setup color Attachment
-    VkAttachmentReference colorAttachmentReference;
-    colorAttachmentReference.attachment = 0;
-    colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	// Setup color Attachment
+	VkAttachmentReference colorAttachmentReference;
+	colorAttachmentReference.attachment = 0;
+	colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    subpassDescription.colorAttachmentCount = 1;
-    subpassDescription.pColorAttachments = &colorAttachmentReference;
+	subpassDescription.colorAttachmentCount = 1;
+	subpassDescription.pColorAttachments = &colorAttachmentReference;
 
-    VkRenderPassCreateInfo renderPassCreateInfo;
-    memset(&renderPassCreateInfo, 0, sizeof(VkRenderPassCreateInfo));
-    renderPassCreateInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassCreateInfo.attachmentCount = 1;
-    renderPassCreateInfo.pAttachments    = &colorAttachmentDescription;
-    renderPassCreateInfo.subpassCount    = 1;
-    renderPassCreateInfo.pSubpasses      = &subpassDescription;
+	VkRenderPassCreateInfo renderPassCreateInfo;
+	memset(&renderPassCreateInfo, 0, sizeof(VkRenderPassCreateInfo));
+	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassCreateInfo.attachmentCount = 1;
+	renderPassCreateInfo.pAttachments = &colorAttachmentDescription;
+	renderPassCreateInfo.subpassCount = 1;
+	renderPassCreateInfo.pSubpasses = &subpassDescription;
 
-    VkRenderPass renderPass;
-    memset(&renderPass, 0, sizeof(VkRenderPass));
+	VkRenderPass renderPass;
+	memset(&renderPass, 0, sizeof(VkRenderPass));
 
-    err = vkCreateRenderPass(device, &renderPassCreateInfo, NULL, &renderPass);
+	err = vkCreateRenderPass(device, &renderPassCreateInfo, NULL, &renderPass);
 
 
+	VkImage textureImage = 0;
 	/*
-    VkImageCreateInfo imageCreateInfo;
-    memset(&imageCreateInfo, 0, sizeof(VkImageCreateInfo));
-    imageCreateInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
-    imageCreateInfo.format        = VK_FORMAT_R8G8B8A8_UNORM;
-    imageCreateInfo.extent.width  = VkHelloImageWidth;
-    imageCreateInfo.extent.height = VkHelloImageHeight;
-    imageCreateInfo.extent.depth  = 1;
-    imageCreateInfo.mipLevels     = 1;
-    imageCreateInfo.arrayLayers   = 1;
-    imageCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
-    imageCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL; // todo: LINEAR fails
-    imageCreateInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	{
+		VkImageCreateInfo imageCreateInfo;
+		memset(&imageCreateInfo, 0, sizeof(VkImageCreateInfo));
+
+		imageCreateInfo.sType		  = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		imageCreateInfo.imageType	  = VK_IMAGE_TYPE_2D;
+		imageCreateInfo.format		  = VK_FORMAT_R8G8B8A8_UNORM;
+		imageCreateInfo.extent.width  = VkHelloImageWidth;
+		imageCreateInfo.extent.height = VkHelloImageHeight;
+		imageCreateInfo.extent.depth  = 1;
+		imageCreateInfo.mipLevels     = 1;
+		imageCreateInfo.arrayLayers   = 1;
+		imageCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+		imageCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL; // todo: LINEAR fails
+		imageCreateInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 
-    VkImage image = 0;
-    err = vkCreateImage(device, &imageCreateInfo, NULL, &image);
+		err = vkCreateImage(device, &imageCreateInfo, NULL, &textureImage);
 
-	VkMemoryRequirements memoryRequirements;
-	memset(&memoryRequirements, 0, sizeof(VkMemoryRequirements));
-	vkGetImageMemoryRequirements(device, image, &memoryRequirements);
+		VkMemoryRequirements memoryRequirements;
+		memset(&memoryRequirements, 0, sizeof(VkMemoryRequirements));
+		vkGetImageMemoryRequirements(device, textureImage, &memoryRequirements);
 
-	// Assign image to a device
-	VkMemoryAllocateInfo allocateInfo;
-	memset(&allocateInfo, 0, sizeof(VkMemoryAllocateInfo));
-	allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocateInfo.allocationSize = memoryRequirements.size;
+		// Assign image to a device
+		VkMemoryAllocateInfo allocateInfo;
+		memset(&allocateInfo, 0, sizeof(VkMemoryAllocateInfo));
+		allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocateInfo.allocationSize = memoryRequirements.size;
 
-	// memoryRequirements.memoryTypeBits;
-	allocateInfo.memoryTypeIndex = 8;
+		// memoryRequirements.memoryTypeBits;
+		allocateInfo.memoryTypeIndex = 8;
 
-	VkDeviceMemory memory;
-	err = vkAllocateMemory(device, &allocateInfo, NULL, &memory);
+		VkDeviceMemory memory;
+		err = vkAllocateMemory(device, &allocateInfo, NULL, &memory);
 
-	err = vkBindImageMemory(device, image, memory, 0);
-
-	*/
+		err = vkBindImageMemory(device, image, memory, 0);
+	}*/
+	
 
 	uint32_t imageCount = 0;
 	err = vkGetSwapchainImagesKHR(device, swapchainKHR, &imageCount, NULL);
@@ -647,7 +675,47 @@ int main()
 	createGraphicsPipeline(device, layout, renderPass, 0, &graphicsPipeline);
 
 
+	VkBuffer vertexBuffer;
+
+	VkBufferCreateInfo bufferCreateInfo;
+	memset(&bufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
+	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	bufferCreateInfo.size = 16 * 96; // 96 verts / 3 = 32 tris
+
+	err = vkCreateBuffer(device, &bufferCreateInfo, NULL, &vertexBuffer);
+
+	VkMemoryRequirements memoryRequirements;
+	memset(&memoryRequirements, 0, sizeof(VkMemoryRequirements));
+	vkGetBufferMemoryRequirements(device, vertexBuffer, &memoryRequirements);
+
+	VkMemoryAllocateInfo allocateInfo;
+	memset(&allocateInfo, 0, sizeof(VkMemoryAllocateInfo));
+	allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocateInfo.allocationSize = memoryRequirements.size;
+
+	VkDeviceMemory vertexBufferMemory;
+	
+	allocateInfo.memoryTypeIndex = 9; // 9 = host visible
+	err = vkAllocateMemory(device, &allocateInfo, NULL, &vertexBufferMemory);
+
+	err = vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+
+
+	float vbData[] = { 0.0f,  0.5, 0.0, 1.0,
+	                   0.5f, -0.5, 0.0, 1.0, 
+	                  -0.5,  -0.5, 0.0, 1.0, };
+
+	float* pData;
+	vkMapMemory(device, vertexBufferMemory, 0, memoryRequirements.size, 0, (void**)&pData);
+	memcpy(pData, &vbData[0], sizeof(vbData));
+	vkUnmapMemory(device, vertexBufferMemory);
+
 	// Do Something Interesting Here
+	bool flip = true;
+	float pushConsts[] = { 0.2f, 0.2f, 2.0f, 1.0f,
+						   0.0f, 0.0f, 0.0f, 0.0f  };
+
 	while (1)
     {
 		VkSemaphore presentCompleteSemaphore;
@@ -683,6 +751,15 @@ int main()
         err = vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
         vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		uint32_t pushConstIndex = (flip) ? 0 : 4;
+		vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16, &pushConsts[pushConstIndex]);
+		flip = !flip;
+
+
+		VkDeviceSize offset = 0;
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, &offset);
+
 
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 		vkCmdDraw(commandBuffer, 3, 1, 0, 0);
