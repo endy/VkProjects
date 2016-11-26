@@ -63,8 +63,8 @@ void createFramebuffer(
 	VkImageView* pImageView,
 	VkFramebuffer* pFramebuffer)
 {
-	VkImageViewCreateInfo imageViewCreateInfo;
-	memset(&imageViewCreateInfo, 0, sizeof(VkImageViewCreateInfo));
+	VkImageViewCreateInfo imageViewCreateInfo = {};
+
 	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	imageViewCreateInfo.image = image;
 	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -78,8 +78,8 @@ void createFramebuffer(
 
 	VkResult err = vkCreateImageView(device, &imageViewCreateInfo, NULL, pImageView);
 
-	VkFramebufferCreateInfo framebufferCreateInfo;
-	memset(&framebufferCreateInfo, 0, sizeof(VkFramebufferCreateInfo));
+	VkFramebufferCreateInfo framebufferCreateInfo = {};
+
 	framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	framebufferCreateInfo.width = VkHelloImageWidth;
 	framebufferCreateInfo.height = VkHelloImageHeight;
@@ -89,8 +89,6 @@ void createFramebuffer(
 	framebufferCreateInfo.attachmentCount = 1;
 	framebufferCreateInfo.pAttachments = pImageView;
 	
-	memset(pFramebuffer, 0, sizeof(VkFramebuffer));
-
 	err = vkCreateFramebuffer(device, &framebufferCreateInfo, NULL, pFramebuffer);
 
 }
@@ -100,7 +98,6 @@ void initRenderPassBeginInfo(
 	VkFramebuffer framebuffer,
 	VkRenderPassBeginInfo* renderPassBeginInfo)
 {
-	memset(renderPassBeginInfo, 0, sizeof(VkRenderPassBeginInfo));
 	renderPassBeginInfo->sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassBeginInfo->framebuffer = framebuffer;
 	renderPassBeginInfo->renderPass = renderPass;
@@ -119,8 +116,8 @@ void createPipelineLayout(
 	
 	VkDescriptorSetLayout layout;
 
-	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
-	memset(&descriptorSetLayoutCreateInfo, 0, sizeof(VkDescriptorSetLayoutCreateInfo));
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+
 	descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	descriptorSetLayoutCreateInfo.bindingCount = 0;
 
@@ -137,7 +134,7 @@ void createPipelineLayout(
 		NULL
 	};
 
-	VkPushConstantRange pushConstantRange;
+	VkPushConstantRange pushConstantRange = {};
 	pushConstantRange.size   = 16;
 	pushConstantRange.offset = 0;
 	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -178,8 +175,8 @@ VkResult createGraphicsPipeline(
 	VkShaderModule vsModule = 0;
 	VkShaderModule fsModule = 0;
 
-	VkShaderModuleCreateInfo shaderModuleCreateInfo;
-	memset(&shaderModuleCreateInfo, 0, sizeof(VkShaderModuleCreateInfo));
+	VkShaderModuleCreateInfo shaderModuleCreateInfo = {};
+
 	shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 
 	shaderModuleCreateInfo.codeSize = vert_shader.size();
@@ -190,8 +187,8 @@ VkResult createGraphicsPipeline(
 	shaderModuleCreateInfo.pCode = (uint32_t*)frag_shader.data();
 	vkResult = vkCreateShaderModule(device, &shaderModuleCreateInfo, NULL, &fsModule);
 
-	VkPipelineShaderStageCreateInfo shaderStageCreateInfo[2];
-	memset(&shaderStageCreateInfo, 0, sizeof(VkPipelineShaderStageCreateInfo) * 2);
+	VkPipelineShaderStageCreateInfo shaderStageCreateInfo[2] = {};
+
 	shaderStageCreateInfo[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStageCreateInfo[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
 	shaderStageCreateInfo[0].module = vsModule;
@@ -207,34 +204,32 @@ VkResult createGraphicsPipeline(
 	// VERTEX BUFFER DATA
 
 	// Position
-	VkVertexInputAttributeDescription vertexAttributeDescription;
+	VkVertexInputAttributeDescription vertexAttributeDescription = {};
 	vertexAttributeDescription.binding  = 0;
 	vertexAttributeDescription.format   = VK_FORMAT_R32G32B32A32_SFLOAT;
 	vertexAttributeDescription.location = 0;
 	vertexAttributeDescription.offset   = 0;
 
 
-	VkVertexInputBindingDescription vertexBindingDescription;
+	VkVertexInputBindingDescription vertexBindingDescription = {};
 	vertexBindingDescription.binding = 0;
 	vertexBindingDescription.stride = 16;
 	vertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 
-	VkPipelineVertexInputStateCreateInfo	vertexInputState;
-	memset(&vertexInputState, 0, sizeof(VkPipelineVertexInputStateCreateInfo));
+	VkPipelineVertexInputStateCreateInfo	vertexInputState = {};
 	vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputState.vertexBindingDescriptionCount   = 1;
 	vertexInputState.pVertexBindingDescriptions = &vertexBindingDescription;
 	vertexInputState.vertexAttributeDescriptionCount = 1;
 	vertexInputState.pVertexAttributeDescriptions = &vertexAttributeDescription;
 	
-	VkPipelineInputAssemblyStateCreateInfo	inputAssemblyState;
-	memset(&inputAssemblyState, 0, sizeof(VkPipelineInputAssemblyStateCreateInfo));
+	VkPipelineInputAssemblyStateCreateInfo	inputAssemblyState = {};
 	inputAssemblyState.sType				  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssemblyState.topology				  = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssemblyState.primitiveRestartEnable = VK_FALSE;
 
-	VkViewport viewport;
+	VkViewport viewport = {};
 	viewport.x = 0;
 	viewport.y = 0;
 	viewport.width = VkHelloImageWidth;
@@ -242,22 +237,21 @@ VkResult createGraphicsPipeline(
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
-	VkRect2D scissorRect;
+	VkRect2D scissorRect = {};
 	scissorRect.offset.x = 0;
 	scissorRect.offset.y = 0;
 	scissorRect.extent.width = VkHelloImageWidth;
 	scissorRect.extent.height = VkHelloImageHeight;
 
-	VkPipelineViewportStateCreateInfo		viewportState;
-	memset(&viewportState, 0, sizeof(VkPipelineViewportStateCreateInfo));
+	VkPipelineViewportStateCreateInfo		viewportState = {};
 	viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportState.viewportCount = 1;
 	viewportState.pViewports    = &viewport;
 	viewportState.scissorCount  = 1;
 	viewportState.pScissors     = &scissorRect;
 
-	VkPipelineRasterizationStateCreateInfo	rasterizationState;
-	memset(&rasterizationState, 0, sizeof(VkPipelineRasterizationStateCreateInfo));
+	VkPipelineRasterizationStateCreateInfo	rasterizationState = {};
+
 	rasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rasterizationState.depthClampEnable        = VK_FALSE;
 	rasterizationState.rasterizerDiscardEnable = VK_FALSE;
@@ -267,24 +261,22 @@ VkResult createGraphicsPipeline(
 	rasterizationState.depthBiasEnable		   = VK_FALSE;
 	rasterizationState.lineWidth               = 1.0f;
 
-	VkPipelineMultisampleStateCreateInfo multisampleState;
-	memset(&multisampleState, 0, sizeof(VkPipelineMultisampleStateCreateInfo));
+	VkPipelineMultisampleStateCreateInfo multisampleState = {};
+
 	multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisampleState.rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT;
 	multisampleState.sampleShadingEnable   = VK_FALSE;
 	multisampleState.alphaToOneEnable      = VK_FALSE;
 	multisampleState.alphaToCoverageEnable = VK_FALSE;
 
-	VkPipelineColorBlendAttachmentState blendAttachment;
-	memset(&blendAttachment, 0, sizeof(VkPipelineColorBlendAttachmentState));
+	VkPipelineColorBlendAttachmentState blendAttachment = {};
 	blendAttachment.blendEnable = VK_FALSE;
 	blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
 									 VK_COLOR_COMPONENT_G_BIT |
 									 VK_COLOR_COMPONENT_B_BIT |
 									 VK_COLOR_COMPONENT_A_BIT;
 
-	VkPipelineColorBlendStateCreateInfo     colorBlendState;
-	memset(&colorBlendState, 0, sizeof(VkPipelineColorBlendStateCreateInfo));
+	VkPipelineColorBlendStateCreateInfo     colorBlendState = {};
 	colorBlendState.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	colorBlendState.logicOpEnable   = VK_FALSE;
 	colorBlendState.attachmentCount = 1;
@@ -293,8 +285,7 @@ VkResult createGraphicsPipeline(
 	// VkPipelineDepthStencilStateCreateInfo   depthStencilState;
 	// VkPipelineDynamicStateCreateInfo        dynamicState;
 
-	VkGraphicsPipelineCreateInfo pipelineCreateInfo;
-	memset(&pipelineCreateInfo, 0, sizeof(VkGraphicsPipelineCreateInfo));
+	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
 
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineCreateInfo.flags = 0;
@@ -343,7 +334,6 @@ int main()
 
 
 	VkExtensionProperties* instance_extensions = new VkExtensionProperties[instance_extension_count];
-	memset(&instance_extensions[0], 0, sizeof(instance_extensions)*instance_extension_count);
 	err = vkEnumerateInstanceExtensionProperties(
 		NULL, &instance_extension_count, instance_extensions);
 
@@ -370,8 +360,6 @@ int main()
 	};
 
 	VkLayerProperties* layerProperties = new VkLayerProperties[layerPropertyCount];
-	memset(&layerProperties[0], 0, sizeof(VkLayerProperties)*layerPropertyCount);
-
 	vkEnumerateInstanceLayerProperties(&layerPropertyCount, &layerProperties[0]);
 
 	for (uint32_t i = 0; i < layerPropertyCount; ++i)
@@ -394,11 +382,9 @@ int main()
 	};
 
 
-	VkInstanceCreateInfo instanceInfo;
-	memset(&instanceInfo, 0, sizeof(VkInstanceCreateInfo));
+	VkInstanceCreateInfo instanceInfo = {};
+	VkApplicationInfo appInfo = {};
 
-	VkApplicationInfo appInfo;
-	memset(&appInfo, 0, sizeof(VkApplicationInfo));
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pApplicationName = "VkHello";
 	appInfo.pEngineName = "IVY";
@@ -412,9 +398,7 @@ int main()
 	instanceInfo.ppEnabledExtensionNames = &instanceExtensionNames[0];
 	instanceInfo.enabledExtensionCount = sizeof(instanceExtensionNames) / sizeof(char*);
 
-	VkInstance instance;
-	memset(&instance, 0, sizeof(VkInstance));
-
+	VkInstance instance = {};
 	VkResult result = vkCreateInstance(&instanceInfo, NULL, &instance);
 
 
@@ -424,8 +408,7 @@ int main()
 
 	err = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, &physicalDevices[0]);
 
-	VkPhysicalDeviceProperties physicalDeviceProperties;
-	memset(&physicalDeviceProperties, 0, sizeof(VkPhysicalDeviceProperties));
+	VkPhysicalDeviceProperties physicalDeviceProperties = {};
 	vkGetPhysicalDeviceProperties(physicalDevices[0], &physicalDeviceProperties);
 
 	uint32_t propertyCount = 0;
@@ -440,8 +423,7 @@ int main()
 	}
 
 
-	VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
-	memset(&physicalDeviceMemoryProperties, 0, sizeof(physicalDeviceMemoryProperties));
+	VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties = {};
 	vkGetPhysicalDeviceMemoryProperties(physicalDevices[0], &physicalDeviceMemoryProperties);
 
 	///@todo Add Verbosity Level
@@ -450,8 +432,7 @@ int main()
 
 	static const uint32_t MaxQueues = 10;
 	uint32_t queueFamilyPropertiesCount = MaxQueues;
-	VkQueueFamilyProperties queueFamilyProperties[MaxQueues];
-	memset(&queueFamilyProperties[0], 0, sizeof(VkQueueFamilyProperties) * MaxQueues);
+	VkQueueFamilyProperties queueFamilyProperties[MaxQueues] = {};
 
 	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevices[0], &queueFamilyPropertiesCount, &queueFamilyProperties[0]);
 
@@ -465,16 +446,15 @@ int main()
 	float queuePriorities[] = { 1.0 };
 	uint32_t vkHelloQueueIndex = 0;
 
-	VkDeviceQueueCreateInfo queueCreateInfo;
-	memset(&queueCreateInfo, 0, sizeof(VkDeviceQueueCreateInfo));
+	VkDeviceQueueCreateInfo queueCreateInfo = {};
+
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 	queueCreateInfo.queueFamilyIndex = vkHelloQueueFamilyIndex;
 	queueCreateInfo.queueCount = RequestedQueues;
 	queueCreateInfo.pQueuePriorities = &queuePriorities[0];
 
 	// Create VkDevice
-	VkDeviceCreateInfo deviceCreateInfo;
-	memset(&deviceCreateInfo, 0, sizeof(VkDeviceCreateInfo));
+	VkDeviceCreateInfo deviceCreateInfo = {};
 
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
@@ -482,8 +462,8 @@ int main()
 	deviceCreateInfo.ppEnabledExtensionNames = &deviceExtensionNames[0];
 	deviceCreateInfo.enabledExtensionCount = sizeof(deviceExtensionNames) / sizeof(char*);
 
-	VkDevice device;
-	memset(&device, 0, sizeof(VkDevice));
+	VkDevice device = {};
+
 	err = vkCreateDevice(physicalDevices[0], &deviceCreateInfo, NULL, &device);
 
 
@@ -491,8 +471,8 @@ int main()
 
 
 
-	VkWin32SurfaceCreateInfoKHR surfaceCreateInfoKHR;
-	memset(&surfaceCreateInfoKHR, 0, sizeof(VkWin32SurfaceCreateInfoKHR));
+	VkWin32SurfaceCreateInfoKHR surfaceCreateInfoKHR = {};
+
 	surfaceCreateInfoKHR.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	surfaceCreateInfoKHR.hinstance = GetModuleHandle(NULL);
 	surfaceCreateInfoKHR.hwnd = pWindow->GetHwnd();
@@ -519,8 +499,7 @@ int main()
 	VkBool32 supported = FALSE;
 	vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevices[0], 0, surfaceKHR, &supported);
 
-	VkSwapchainCreateInfoKHR swapchainCreateInfoKHR;
-	memset(&swapchainCreateInfoKHR, 0, sizeof(VkSwapchainCreateInfoKHR));
+	VkSwapchainCreateInfoKHR swapchainCreateInfoKHR = {};
 	swapchainCreateInfoKHR.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	swapchainCreateInfoKHR.minImageCount = surfaceCapabilities.minImageCount;
 	swapchainCreateInfoKHR.surface = surfaceKHR;
@@ -542,38 +521,38 @@ int main()
 	delete[] surfaceFormats;
 	delete[] presentModes;
 
-	VkQueue queue;
-	memset(&queue, 0, sizeof(VkQueue));
+	VkQueue queue = {};
+
 	vkGetDeviceQueue(device, vkHelloQueueFamilyIndex, vkHelloQueueIndex, &queue);
 
 	// Create Command Pool
-	VkCommandPoolCreateInfo commandPoolCreateInfo;
-	memset(&commandPoolCreateInfo, 0, sizeof(VkCommandPoolCreateInfo));
+	VkCommandPoolCreateInfo commandPoolCreateInfo = {};
+
 	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	commandPoolCreateInfo.queueFamilyIndex = vkHelloQueueFamilyIndex;
 	commandPoolCreateInfo.flags = 0;  // flags=0 Choosing to reset buffers in bulk, not per command buffer
 
 
-	VkCommandPool commandPool;
-	memset(&commandPool, 0, sizeof(VkCommandPool));
+	VkCommandPool commandPool = {};
+
 	err = vkCreateCommandPool(device, &commandPoolCreateInfo, NULL, &commandPool);
 
-	VkCommandBufferAllocateInfo commandBufferAllocateInfo;
-	memset(&commandBufferAllocateInfo, 0, sizeof(VkCommandBufferAllocateInfo));
+	VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
+
 	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	commandBufferAllocateInfo.commandPool = commandPool;
 	commandBufferAllocateInfo.commandBufferCount = 1;
 	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-	VkCommandBuffer commandBuffer;
-	memset(&commandBuffer, 0, sizeof(VkCommandBuffer));
+	VkCommandBuffer commandBuffer = {};
+
 	vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer);
 
 	///@todo finish creating image view, framebuffer, render pass 
 
 
-	VkAttachmentDescription colorAttachmentDescription;
-	memset(&colorAttachmentDescription, 0, sizeof(VkAttachmentDescription));
+	VkAttachmentDescription colorAttachmentDescription = {};
+
 	colorAttachmentDescription.format = VK_FORMAT_B8G8R8A8_UNORM;
 	colorAttachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -583,8 +562,8 @@ int main()
 	colorAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // VK_IMAGE_LAYOUT_UNDEFINED; // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	colorAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkSubpassDescription subpassDescription;
-	memset(&subpassDescription, 0, sizeof(VkSubpassDescription));
+	VkSubpassDescription subpassDescription = {};
+
 	subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
 	// Setup color Attachment
@@ -595,8 +574,8 @@ int main()
 	subpassDescription.colorAttachmentCount = 1;
 	subpassDescription.pColorAttachments = &colorAttachmentReference;
 
-	VkRenderPassCreateInfo renderPassCreateInfo;
-	memset(&renderPassCreateInfo, 0, sizeof(VkRenderPassCreateInfo));
+	VkRenderPassCreateInfo renderPassCreateInfo = {};
+
 	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassCreateInfo.attachmentCount = 1;
 	renderPassCreateInfo.pAttachments = &colorAttachmentDescription;
@@ -604,16 +583,14 @@ int main()
 	renderPassCreateInfo.pSubpasses = &subpassDescription;
 
 	VkRenderPass renderPass;
-	memset(&renderPass, 0, sizeof(VkRenderPass));
 
 	err = vkCreateRenderPass(device, &renderPassCreateInfo, NULL, &renderPass);
 
 
 	VkImage textureImage = 0;
-	/*
+	VkImage stageImage = 0;
 	{
-		VkImageCreateInfo imageCreateInfo;
-		memset(&imageCreateInfo, 0, sizeof(VkImageCreateInfo));
+		VkImageCreateInfo imageCreateInfo = {};
 
 		imageCreateInfo.sType		  = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageCreateInfo.imageType	  = VK_IMAGE_TYPE_2D;
@@ -628,16 +605,14 @@ int main()
 		imageCreateInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-
 		err = vkCreateImage(device, &imageCreateInfo, NULL, &textureImage);
 
-		VkMemoryRequirements memoryRequirements;
-		memset(&memoryRequirements, 0, sizeof(VkMemoryRequirements));
+		VkMemoryRequirements memoryRequirements = {};
+
 		vkGetImageMemoryRequirements(device, textureImage, &memoryRequirements);
 
 		// Assign image to a device
-		VkMemoryAllocateInfo allocateInfo;
-		memset(&allocateInfo, 0, sizeof(VkMemoryAllocateInfo));
+		VkMemoryAllocateInfo allocateInfo = {};
 		allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocateInfo.allocationSize = memoryRequirements.size;
 
@@ -647,8 +622,8 @@ int main()
 		VkDeviceMemory memory;
 		err = vkAllocateMemory(device, &allocateInfo, NULL, &memory);
 
-		err = vkBindImageMemory(device, image, memory, 0);
-	}*/
+		err = vkBindImageMemory(device, textureImage, memory, 0);
+	}
 	
 
 	uint32_t imageCount = 0;
@@ -677,20 +652,20 @@ int main()
 
 	VkBuffer vertexBuffer;
 
-	VkBufferCreateInfo bufferCreateInfo;
-	memset(&bufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
+	VkBufferCreateInfo bufferCreateInfo = {};
+
 	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	bufferCreateInfo.size = 16 * 96; // 96 verts / 3 = 32 tris
 
 	err = vkCreateBuffer(device, &bufferCreateInfo, NULL, &vertexBuffer);
 
-	VkMemoryRequirements memoryRequirements;
-	memset(&memoryRequirements, 0, sizeof(VkMemoryRequirements));
+	VkMemoryRequirements memoryRequirements = {};
+
 	vkGetBufferMemoryRequirements(device, vertexBuffer, &memoryRequirements);
 
-	VkMemoryAllocateInfo allocateInfo;
-	memset(&allocateInfo, 0, sizeof(VkMemoryAllocateInfo));
+	VkMemoryAllocateInfo allocateInfo = {};
+
 	allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocateInfo.allocationSize = memoryRequirements.size;
 
@@ -729,7 +704,7 @@ int main()
 		uint32_t imageIndex = 0;
 		err = vkAcquireNextImageKHR(device, swapchainKHR, UINT64_MAX, presentCompleteSemaphore, 0, &imageIndex);
 
-		VkRenderPassBeginInfo renderPassBeginInfo;
+		VkRenderPassBeginInfo renderPassBeginInfo = {};
 
 		initRenderPassBeginInfo(renderPass, framebuffers[imageIndex], &renderPassBeginInfo);
 
@@ -742,8 +717,7 @@ int main()
 		renderPassBeginInfo.clearValueCount = 1;
 		renderPassBeginInfo.pClearValues = &clearValue;
 
-        VkCommandBufferBeginInfo beginInfo;
-        memset(&beginInfo, 0, sizeof(VkCommandBufferBeginInfo));
+		VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;  // HW: regenerate per frame vs cache per frame
 
@@ -767,7 +741,7 @@ int main()
         vkCmdEndRenderPass(commandBuffer);
 
 
-		VkImageMemoryBarrier prePresentBarrier;
+		VkImageMemoryBarrier prePresentBarrier = {};
 		prePresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		prePresentBarrier.pNext = NULL;
 		prePresentBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -787,10 +761,9 @@ int main()
 
         err = vkEndCommandBuffer(commandBuffer);
 
-        VkSubmitInfo submitInfo;
-        memset(&submitInfo, 0, sizeof(VkSubmitInfo));
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		VkSubmitInfo submitInfo = {};
 
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
 		submitInfo.pWaitSemaphores = &presentCompleteSemaphore;
@@ -801,8 +774,7 @@ int main()
 
         err = vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
 
-		VkPresentInfoKHR presentInfo;
-		memset(&presentInfo, 0, sizeof(VkPresentInfoKHR));
+		VkPresentInfoKHR presentInfo = {};
 		presentInfo.sType          = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		presentInfo.pSwapchains    = &swapchainKHR;
 		presentInfo.swapchainCount = 1;
