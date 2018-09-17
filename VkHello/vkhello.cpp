@@ -923,6 +923,10 @@ int main()
     imageViewCreateInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
     imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
     imageViewCreateInfo.image = texture;
+    imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+    imageViewCreateInfo.subresourceRange.levelCount = 1;
+    imageViewCreateInfo.subresourceRange.layerCount = 1;
     err = vkCreateImageView(vulkanInfo.vkDevice, &imageViewCreateInfo, NULL, &textureImageView);
 
 
