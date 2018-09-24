@@ -1,0 +1,108 @@
+
+
+create app window
+
+inti vulkan
+    create instance (which takes an app info structure)
+    query physical device (properites, memory properties, queue family properties)
+    create logical device and a queue for that device
+    creates a command pool
+
+init swapchain
+    creates a swapchain surface
+    gets physical device surface capaiblities, present modes, surface formats
+    create swapchain with surface properties and present mode (default to FIFO)
+
+gets swapchain images
+
+create command buffer from pool
+
+create renderpass (using subpass description and attachment description + color attach reference)
+
+create frambeuffer (using renderpass) per swapchain image
+    create image view from image
+    create framebuffer using image view + renderpass
+
+create texture
+    create image
+    query image memory requirements
+    allocate memory (device local)
+    bind image to memory
+    create image for staging data
+    query image memory requirements
+    allocate memory (host visible + host coherent)
+    bind stage image to memory
+    map memory
+    fill data w/ CPU
+    unmap memory
+    image memory barrier (host write -> transfer read)
+    copy image from staging to texture
+        command buffer begin
+        pipeline barrier (host to transfer)
+        vkCmdCopyImage
+        vkQueueSubmit
+        vkQueueWaitIdle
+    return textureIMage
+
+create image view
+create sampler
+
+create pipeline layout
+    create descriptor set layout
+    create pipeline layout (descriptor set + push constant ranges)
+
+create pipeline
+    init shader stage create info
+        load spirv and create shader modules
+    init vertex buffer mapping (attrib desc + bind desc)
+    init viewport state info
+        init viewport
+        init scssior
+    init raster state
+    init multisample state
+    init color blend attach state
+
+    setup pipeline create structure
+    create pipeline
+
+    free shader modules
+
+
+create descriptor pool (w/ pool sizes for descriptors and # of sets known)
+allocate descriptor set
+update descriptor set with DescriptorWrite info (actual resource references)
+
+create vertex buffer
+query memory requirements
+allocate memory
+bind vertex buffer to memory
+map
+fill data
+unmap
+
+Render LOOP
+    create semaphore
+    acquire NextImageKHR
+
+    reset command buffer
+    begin command buffer
+    bind descriptor sets
+    begin render pass
+    update push constants
+    bind vertex buffer
+    bind pipeline
+    draw
+    end render pass
+
+    pipeline barrier: color attachment optimial to present src khr, color attachment write, stage bottom of pipe
+    end command buffer
+
+    queue submit
+    queue present
+    queue wait for idle
+    
+    destroy semaphore
+
+device wait idle
+destroy resources...
+

@@ -304,14 +304,14 @@ VkResult createGraphicsPipeline(
     // Position
     VkVertexInputAttributeDescription vertexAttributeDescription = {};
     vertexAttributeDescription.binding  = 0;
-    vertexAttributeDescription.format   = VK_FORMAT_R32G32B32A32_SFLOAT;
+    vertexAttributeDescription.format   = VK_FORMAT_R32G32_SFLOAT;
     vertexAttributeDescription.location = 0;
     vertexAttributeDescription.offset   = 0;
 
 
     VkVertexInputBindingDescription vertexBindingDescription = {};
     vertexBindingDescription.binding = 0;
-    vertexBindingDescription.stride = 16;
+    vertexBindingDescription.stride = 8;
     vertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
     VkPipelineVertexInputStateCreateInfo    vertexInputState = {};
@@ -1038,9 +1038,12 @@ int main()
     err = vkAllocateMemory(vulkanInfo.vkDevice, &allocateInfo, NULL, &vertexBufferMemory);
     err = vkBindBufferMemory(vulkanInfo.vkDevice, vertexBuffer, vertexBufferMemory, 0);
 
-    float vbData[] = { 0.0f,  0.5, 0.0, 1.0,
-                       0.5f, -0.5, 0.0, 1.0, 
-                      -0.5,  -0.5, 0.0, 1.0, };
+    float vbData[] = { -0.9f, -0.9f,
+                        0.9f, -0.9f,
+                       -0.9f, 0.9f,
+                       0.9f, -0.9f,
+                       0.9f,  0.9f,
+                       -0.9f,  0.9f,};
 
     float* pData;
     vkMapMemory(vulkanInfo.vkDevice, vertexBufferMemory, 0, memoryRequirements.size, 0, (void**)&pData);
@@ -1053,7 +1056,7 @@ int main()
 
     // Scene Loop Setup
     bool flip = true;
-    float pushConsts[] = { 0.2f, 0.2f, 2.0f, 1.0f,
+    float pushConsts[] = { 0.1f, 0.2f, 2.0f, 1.0f,
                            0.0f, 0.0f, 0.0f, 0.0f  };
     pWindow->Show();
 
@@ -1099,7 +1102,7 @@ int main()
 
 
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+        vkCmdDraw(commandBuffer, 6, 1, 0, 0);
         vkCmdEndRenderPass(commandBuffer);
 
         ///@todo Abstract out pipeline barriers

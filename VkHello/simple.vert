@@ -13,13 +13,17 @@ vec2 positions[3] = vec2[](
     vec2(-1.0, 1.0)
 );
 
-vec2 texcoords[3] = vec2[](
+vec2 texcoords[6] = vec2[](
     vec2(0.0, 0.0),
     vec2(1.0, 0.0),
+    vec2(0.0, 1.0),
+    vec2(1.0, 0.0),
+    vec2(1.0, 1.0),
     vec2(0.0, 1.0)
+
 );
 
-layout(location = 0) in vec4 inPosition;
+layout(location = 0) in vec2 inPosition;
 
 layout(push_constant) uniform vs_constants {
     float select;
@@ -37,6 +41,8 @@ void main() {
     }
     else    
     {
-        gl_Position = inPosition;
+        gl_Position = vec4(inPosition.xy, 0.5, 1.0);
+
+        texCoord = texcoords[3*(gl_VertexIndex/3) + gl_VertexIndex%3] / 2.0;
     }
 }
