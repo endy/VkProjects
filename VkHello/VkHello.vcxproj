@@ -71,9 +71,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="IvyWindow.cpp" />
+    <ClCompile Include="VkBuilder.cpp" />
     <ClCompile Include="vkhello.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="VkBuilder.h" />
     <ClInclude Include="IvyWindow.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

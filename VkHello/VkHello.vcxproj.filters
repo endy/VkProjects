@@ -3,8 +3,10 @@
   <ItemGroup>
     <ClCompile Include="vkhello.cpp" />
     <ClCompile Include="IvyWindow.cpp" />
+    <ClCompile Include="VkBuilder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="IvyWindow.h" />
+    <ClInclude Include="VkBuilder.h" />
   </ItemGroup>
 </Project>

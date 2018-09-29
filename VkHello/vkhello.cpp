@@ -12,6 +12,8 @@
 
 #include "vulkan\vulkan.h"
 
+#include "VkBuilder.h"
+
 #include "IvyWindow.h"
 
 // Scene Globals
@@ -285,132 +287,16 @@ VkResult createGraphicsPipeline(
     shaderModuleCreateInfo.codeSize = frag_shader.size();
     shaderModuleCreateInfo.pCode = (uint32_t*)frag_shader.data();
     vkResult = vkCreateShaderModule(device, &shaderModuleCreateInfo, NULL, &fsModule);
+ 
+    VkPipelineBuilder* pBuilder = VkPipelineBuilder::Create(device);
 
-    VkPipelineShaderStageCreateInfo shaderStageCreateInfo[2] = {};
+    pBuilder->SetViewportState(VkHelloImageWidth, VkHelloImageHeight);
+    pBuilder->SetShaderState(vsModule, fsModule);
 
-    shaderStageCreateInfo[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shaderStageCreateInfo[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
-    shaderStageCreateInfo[0].module = vsModule;
-    shaderStageCreateInfo[0].pName  = "main";
-
-
-    shaderStageCreateInfo[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shaderStageCreateInfo[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-    shaderStageCreateInfo[1].module = fsModule;
-    shaderStageCreateInfo[1].pName = "main";
-
-    // VERTEX BUFFER DATA
-
-    // Position
-    VkVertexInputAttributeDescription vertexAttributeDescription = {};
-    vertexAttributeDescription.binding  = 0;
-    vertexAttributeDescription.format   = VK_FORMAT_R32G32_SFLOAT;
-    vertexAttributeDescription.location = 0;
-    vertexAttributeDescription.offset   = 0;
-
-
-    VkVertexInputBindingDescription vertexBindingDescription = {};
-    vertexBindingDescription.binding = 0;
-    vertexBindingDescription.stride = 8;
-    vertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-    VkPipelineVertexInputStateCreateInfo    vertexInputState = {};
-    vertexInputState.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputState.vertexBindingDescriptionCount   = 1;
-    vertexInputState.pVertexBindingDescriptions      = &vertexBindingDescription;
-    vertexInputState.vertexAttributeDescriptionCount = 1;
-    vertexInputState.pVertexAttributeDescriptions    = &vertexAttributeDescription;
+    *pPipeline = pBuilder->GetPipeline(layout, renderPass, subpassIndex);
     
-    VkPipelineInputAssemblyStateCreateInfo    inputAssemblyState = {};
-    inputAssemblyState.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssemblyState.topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAssemblyState.primitiveRestartEnable = VK_FALSE;
+    pBuilder->Destroy();
 
-    VkViewport viewport = {};
-    viewport.x = 0;
-    viewport.y = 0;
-    viewport.width = VkHelloImageWidth;
-    viewport.height = VkHelloImageHeight;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-
-    VkRect2D scissorRect = {};
-    scissorRect.offset.x = 0;
-    scissorRect.offset.y = 0;
-    scissorRect.extent.width = VkHelloImageWidth;
-    scissorRect.extent.height = VkHelloImageHeight;
-
-    VkPipelineViewportStateCreateInfo viewportState = {};
-    viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportState.viewportCount = 1;
-    viewportState.pViewports    = &viewport;
-    viewportState.scissorCount  = 1;
-    viewportState.pScissors     = &scissorRect;
-
-    VkPipelineRasterizationStateCreateInfo rasterizationState = {};
-
-    rasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizationState.depthClampEnable        = VK_FALSE;
-    rasterizationState.rasterizerDiscardEnable = VK_FALSE;
-    rasterizationState.polygonMode             = VK_POLYGON_MODE_FILL;
-    rasterizationState.cullMode                = VK_CULL_MODE_NONE;
-    rasterizationState.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rasterizationState.depthBiasEnable         = VK_FALSE;
-    rasterizationState.lineWidth               = 1.0f;
-
-    VkPipelineMultisampleStateCreateInfo multisampleState = {};
-
-    multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampleState.rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT;
-    multisampleState.sampleShadingEnable   = VK_FALSE;
-    multisampleState.alphaToOneEnable      = VK_FALSE;
-    multisampleState.alphaToCoverageEnable = VK_FALSE;
-
-    VkPipelineColorBlendAttachmentState blendAttachment = {};
-    blendAttachment.blendEnable = VK_FALSE;
-    blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                                     VK_COLOR_COMPONENT_G_BIT |
-                                     VK_COLOR_COMPONENT_B_BIT |
-                                     VK_COLOR_COMPONENT_A_BIT;
-
-    VkPipelineColorBlendStateCreateInfo     colorBlendState = {};
-    colorBlendState.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlendState.logicOpEnable   = VK_FALSE;
-    colorBlendState.attachmentCount = 1;
-    colorBlendState.pAttachments    = &blendAttachment;
-
-    // VkPipelineDepthStencilStateCreateInfo   depthStencilState;
-    // VkPipelineDynamicStateCreateInfo        dynamicState;
-
-    VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
-
-    pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineCreateInfo.flags = 0;
-
-    pipelineCreateInfo.basePipelineHandle = 0;
-    pipelineCreateInfo.basePipelineIndex = 0;
-
-    pipelineCreateInfo.layout     = layout;
-    pipelineCreateInfo.renderPass = renderPass;
-    pipelineCreateInfo.subpass    = subpassIndex;
-
-    pipelineCreateInfo.pViewportState      = &viewportState;
-
-    pipelineCreateInfo.pVertexInputState   = &vertexInputState;
-    pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
-
-    pipelineCreateInfo.pRasterizationState = &rasterizationState;
-    pipelineCreateInfo.pMultisampleState   = &multisampleState;
-    pipelineCreateInfo.pColorBlendState    = &colorBlendState;
-
-    pipelineCreateInfo.pDepthStencilState = NULL;
-    pipelineCreateInfo.pDynamicState      = NULL;
-
-    pipelineCreateInfo.stageCount = 2;
-    pipelineCreateInfo.pStages    = &shaderStageCreateInfo[0];
-
-
-    vkResult = vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, NULL, pPipeline);
 
     // Free shader modules no longer needed
     vkDestroyShaderModule(device, vsModule, NULL);
