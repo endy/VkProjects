@@ -72,10 +72,15 @@ private:
 };
 
 
-union Resource
+struct Resource
 {
-    VkImage  image;
-    VkBuffer buffer;
+    union
+    {
+        VkImage  image;
+        VkBuffer buffer;
+    };
+
+    VkMemoryRequirements memReqs;
 };
 
 class ResourceBuilder

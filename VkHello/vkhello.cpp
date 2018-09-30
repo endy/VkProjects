@@ -317,74 +317,16 @@ VkResult createGraphicsPipeline(
 }
 
 
-Resource* createTexture(
+void copyTexture(
     VkHelloVulkanDeviceInfo* pVulkanInfo,
-    VkCommandBuffer cmdBuf)
+    VkCommandBuffer cmdBuf,
+    Resource* pSrc,
+    Resource* pDst)
 {
-    // create texture
 
-    VkResult err;
-    Resource* pTexture = NULL;
-
-    ResourceBuilder* pResBuilder = ResourceBuilder::Create(pVulkanInfo->vkDevice);
-
-
-    pResBuilder->SetImageDimensions(VkHelloImageWidth, VkHelloImageHeight, 1);
-    pResBuilder->SetImageStaging(false);
-    pTexture = pResBuilder->GetImageResource();
-    
-    
-    VkMemoryRequirements memoryRequirements = {};
-    vkGetImageMemoryRequirements(pVulkanInfo->vkDevice, pTexture->image, &memoryRequirements);
-    
-    // Assign image to a device
-    VkMemoryAllocateInfo allocateInfo = {};
-    allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocateInfo.allocationSize = memoryRequirements.size;
-    
-    allocateInfo.memoryTypeIndex = memoryTypeIndexWithGivenProperties(pVulkanInfo->vkDeviceMemoryProperties, 
-                                        memoryRequirements.memoryTypeBits,
-                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    
-    VkDeviceMemory textureMemory;
-    err = vkAllocateMemory(pVulkanInfo->vkDevice, &allocateInfo, NULL, &textureMemory);
-    err = vkBindImageMemory(pVulkanInfo->vkDevice, pTexture->image, textureMemory, 0);
-    
-    
-    pResBuilder->SetImageStaging(true);
-    Resource* pStagingRes = pResBuilder->GetImageResource();
-    
-    
-    vkGetImageMemoryRequirements(pVulkanInfo->vkDevice, pStagingRes->image, &memoryRequirements);
-    
-    allocateInfo.memoryTypeIndex = memoryTypeIndexWithGivenProperties(pVulkanInfo->vkDeviceMemoryProperties,
-        memoryRequirements.memoryTypeBits,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    
-    VkDeviceMemory stagingMemory;
-    err = vkAllocateMemory(pVulkanInfo->vkDevice, &allocateInfo, NULL, &stagingMemory);
-    err = vkBindImageMemory(pVulkanInfo->vkDevice, pStagingRes->image, stagingMemory, 0);
-    
-    uint32_t* pTexelData = NULL;
-    err = vkMapMemory(pVulkanInfo->vkDevice, stagingMemory, 0, VK_WHOLE_SIZE, 0, reinterpret_cast<void**>(&pTexelData));
-    
-    for (uint32_t h = 0; h < VkHelloImageHeight / 2; h++)
-    { 
-        for (uint32_t w = 0; w < VkHelloImageWidth / 2; w++)
-        {
-            uint32_t ti = (h * VkHelloImageWidth) + w;
-            pTexelData[ti] = ((uint32_t) ((w*255.0) / (float)VkHelloImageWidth) << 0)  |
-                             ((uint32_t) ((h*255.0) / (float)VkHelloImageHeight)  << 8)  |
-                             (0x0 << 16) |
-                             (0xFF << 24);
-        }
-    }
-    
-    vkUnmapMemory(pVulkanInfo->vkDevice, stagingMemory);
-    
     VkImageMemoryBarrier imageBarrier = {};
     imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageBarrier.image = pStagingRes->image;
+    imageBarrier.image = pSrc->image;
     imageBarrier.oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
     imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
@@ -402,65 +344,130 @@ Resource* createTexture(
     region.dstSubresource.mipLevel = 0;
     region.dstSubresource.baseArrayLayer = 0;
     region.dstSubresource.layerCount = 1;
-    
+
     region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     region.srcSubresource.mipLevel = 0;
     region.srcSubresource.baseArrayLayer = 0;
     region.srcSubresource.layerCount = 1;
-    
+
     region.extent.depth = 1;
     region.extent.width = VkHelloImageWidth;
     region.extent.height = VkHelloImageHeight;
-    
+
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    
-    err = vkBeginCommandBuffer(cmdBuf, &beginInfo);
-    
+
+    VkResult err = vkBeginCommandBuffer(cmdBuf, &beginInfo);
+
     vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &imageBarrier);
-    
-    imageBarrier.image = pTexture->image;
-    imageBarrier.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageBarrier.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+    imageBarrier.image = pDst->image;
+    imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; ///@todo this probably isn't correct...
     vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &imageBarrier);
-    
-    
+
+
     vkCmdCopyImage(cmdBuf,
-                   pStagingRes->image,
-                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                   pTexture->image,
-                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                   1,
-                   &region);
+        pSrc->image,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        pDst->image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &region);
     err = vkEndCommandBuffer(cmdBuf);
-    
+
     VkSubmitInfo submitInfo = {};
-    
+
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &cmdBuf;
     submitInfo.pWaitSemaphores = NULL; // &presentCompleteSemaphore;
     submitInfo.waitSemaphoreCount = 0;
-    
+
     VkPipelineStageFlags pipe_stage_flags = VK_PIPELINE_STAGE_TRANSFER_BIT;
     submitInfo.pWaitDstStageMask = &pipe_stage_flags;
-    
+
     err = vkQueueSubmit(pVulkanInfo->vkQueue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(pVulkanInfo->vkQueue);
 
+    err = vkResetCommandPool(pVulkanInfo->vkDevice, pVulkanInfo->vkCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+}
+
+
+Resource* createTexture(
+    VkHelloVulkanDeviceInfo* pVulkanInfo,
+    VkCommandBuffer cmdBuf)
+{
+    // create texture
+
+    VkResult err;
+    Resource* pTexture = NULL;
+
+    ResourceBuilder* pResBuilder = ResourceBuilder::Create(pVulkanInfo->vkDevice);
+
+
+    pResBuilder->SetImageDimensions(VkHelloImageWidth, VkHelloImageHeight, 1);
+    pResBuilder->SetImageStaging(false);
+    pTexture = pResBuilder->GetImageResource();
+
+    // Assign image to a device
+    VkMemoryAllocateInfo allocateInfo = {};
+    allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocateInfo.allocationSize = pTexture->memReqs.size;
     
+    allocateInfo.memoryTypeIndex = memoryTypeIndexWithGivenProperties(pVulkanInfo->vkDeviceMemoryProperties, 
+                                                                      pTexture->memReqs.memoryTypeBits,
+                                                                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkDeviceMemory textureMemory;
+    err = vkAllocateMemory(pVulkanInfo->vkDevice, &allocateInfo, NULL, &textureMemory);
+    err = vkBindImageMemory(pVulkanInfo->vkDevice, pTexture->image, textureMemory, 0);
+
+    pResBuilder->SetImageStaging(true);
+    Resource* pStagingRes = pResBuilder->GetImageResource();
+
+    allocateInfo.memoryTypeIndex = memoryTypeIndexWithGivenProperties(pVulkanInfo->vkDeviceMemoryProperties,
+                                                                      pStagingRes->memReqs.memoryTypeBits,
+                                                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                                      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    VkDeviceMemory stagingMemory;
+    err = vkAllocateMemory(pVulkanInfo->vkDevice, &allocateInfo, NULL, &stagingMemory);
+    err = vkBindImageMemory(pVulkanInfo->vkDevice, pStagingRes->image, stagingMemory, 0);
+
+    uint32_t* pTexelData = NULL;
+    err = vkMapMemory(pVulkanInfo->vkDevice, stagingMemory, 0, VK_WHOLE_SIZE, 0, reinterpret_cast<void**>(&pTexelData));
     
-    vkFreeMemory(pVulkanInfo->vkDevice, stagingMemory, NULL);
+    for (uint32_t h = 0; h < VkHelloImageHeight / 2; h++)
+    { 
+        for (uint32_t w = 0; w < VkHelloImageWidth / 2; w++)
+        {
+            uint32_t ti = (h * VkHelloImageWidth) + w;
+            pTexelData[ti] = ((uint32_t) ((w*255.0) / (float)VkHelloImageWidth) << 0)  |
+                             ((uint32_t) ((h*255.0) / (float)VkHelloImageHeight)  << 8)  |
+                             (0x0 << 16) |
+                             (0xFF << 24);
+        }
+    }
+    
+    vkUnmapMemory(pVulkanInfo->vkDevice, stagingMemory);
+
+
+    copyTexture(pVulkanInfo, cmdBuf, pStagingRes, pTexture);
+
     vkDestroyImage(pVulkanInfo->vkDevice, pStagingRes->image, NULL);
+    vkFreeMemory(pVulkanInfo->vkDevice, stagingMemory, NULL);
+
     delete pStagingRes;
     pStagingRes = NULL;
-    
+
     ///@todo make generic creation paths & copy paths
 
     return pTexture;
+
 }
 
 
@@ -900,26 +907,26 @@ int main()
 
     vkUpdateDescriptorSets(vulkanInfo.vkDevice, 2, descriptorWrites, 0, NULL);
 
+
     ResourceBuilder* pResBuilder = ResourceBuilder::Create(vulkanInfo.vkDevice);
 
     uint32_t vbSize = 16 * 96; // 96 verts / 3=32 tris
-    pResBuilder->SetBufferSize(16 * 96);
-
+    pResBuilder->SetBufferSize(vbSize);
+    pResBuilder->SetBufferUsage(true);
     Resource* pVertexBuffer = pResBuilder->GetBufferResource();
 
     pResBuilder->Destroy();
     pResBuilder = NULL;
 
-    VkMemoryRequirements memoryRequirements = {};
-    vkGetBufferMemoryRequirements(vulkanInfo.vkDevice, pVertexBuffer->buffer, &memoryRequirements);
+
 
     VkMemoryAllocateInfo allocateInfo = {};
     allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocateInfo.allocationSize = memoryRequirements.size;
+    allocateInfo.allocationSize = pVertexBuffer->memReqs.size;
 
     VkDeviceMemory vertexBufferMemory;
     allocateInfo.memoryTypeIndex = memoryTypeIndexWithGivenProperties(vulkanInfo.vkDeviceMemoryProperties,
-                                                                      memoryRequirements.memoryTypeBits,
+                                                                      pVertexBuffer->memReqs.memoryTypeBits,
                                                                       (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
     err = vkAllocateMemory(vulkanInfo.vkDevice, &allocateInfo, NULL, &vertexBufferMemory);
     err = vkBindBufferMemory(vulkanInfo.vkDevice, pVertexBuffer->buffer, vertexBufferMemory, 0);
@@ -932,7 +939,7 @@ int main()
                        -0.9f,  0.9f,};
 
     float* pData;
-    vkMapMemory(vulkanInfo.vkDevice, vertexBufferMemory, 0, memoryRequirements.size, 0, (void**)&pData);
+    vkMapMemory(vulkanInfo.vkDevice, vertexBufferMemory, 0, pVertexBuffer->memReqs.size, 0, (void**)&pData);
     memcpy(pData, &vbData[0], sizeof(vbData));
     vkUnmapMemory(vulkanInfo.vkDevice, vertexBufferMemory);
 

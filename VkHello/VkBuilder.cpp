@@ -303,6 +303,10 @@ Resource* ResourceBuilder::GetImageResource()
         delete pResource;
         pResource = NULL;
     }
+    else
+    {
+        vkGetImageMemoryRequirements(m_device, pResource->image, &pResource->memReqs);
+    }
 
     return pResource;
 }
@@ -342,6 +346,10 @@ Resource* ResourceBuilder::GetBufferResource()
     {
         delete pResource;
         pResource = NULL;
+    }
+    else
+    {
+        vkGetBufferMemoryRequirements(m_device, pResource->buffer, &pResource->memReqs);
     }
 
     return pResource;
