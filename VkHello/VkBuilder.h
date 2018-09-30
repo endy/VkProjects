@@ -70,3 +70,38 @@ private:
     // Color Blend State
     VkPipelineColorBlendAttachmentState m_blendAttachment;
 };
+
+
+union Resource
+{
+    VkImage  image;
+    VkBuffer buffer;
+};
+
+class ResourceBuilder
+{
+public:
+    static ResourceBuilder* Create(VkDevice device);
+
+    virtual void Destroy();
+
+    Resource* GetImageResource();
+    Resource* GetBufferResource();
+
+    void SetImageDimensions(uint32_t width, uint32_t height, uint32_t depth);
+    void SetImageStaging(bool isStaging);
+
+private:
+    ResourceBuilder(VkDevice);
+    ResourceBuilder(ResourceBuilder&);  // Disallow copy constructor
+
+    virtual ~ResourceBuilder();
+
+    bool Init();
+
+    VkDevice m_device;
+
+    VkImageCreateInfo  m_imageCreateInfo;
+    VkBufferCreateInfo m_bufferCreateInfo;
+
+};

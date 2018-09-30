@@ -306,161 +306,150 @@ VkResult createGraphicsPipeline(
 }
 
 
-void createTexture(
+Resource* createTexture(
     VkHelloVulkanDeviceInfo* pVulkanInfo,
-    VkCommandBuffer cmdBuf,
-    VkImage *pTextureImage)
+    VkCommandBuffer cmdBuf)
 {
     // create texture
 
-    VkImage textureImage = 0;
-    VkImage stageImage = 0;
-    
     VkResult err;
+    Resource* pTexture = NULL;
 
-    {
-        VkImageCreateInfo imageCreateInfo = {};
+    ResourceBuilder* pResBuilder = ResourceBuilder::Create(pVulkanInfo->vkDevice);
 
-        imageCreateInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
-        imageCreateInfo.format        = VK_FORMAT_R8G8B8A8_UNORM;
-        imageCreateInfo.extent.width  = VkHelloImageWidth;
-        imageCreateInfo.extent.height = VkHelloImageHeight;
-        imageCreateInfo.extent.depth  = 1;
-        imageCreateInfo.mipLevels     = 1;
-        imageCreateInfo.arrayLayers   = 1;
-        imageCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
-        imageCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL; // todo: LINEAR fails
-        imageCreateInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | 
-                                        VK_IMAGE_USAGE_TRANSFER_DST_BIT | 
-                                        VK_IMAGE_USAGE_SAMPLED_BIT;
-        imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        err = vkCreateImage(pVulkanInfo->vkDevice, &imageCreateInfo, NULL, &textureImage);
-
-        VkMemoryRequirements memoryRequirements = {};
-
-        vkGetImageMemoryRequirements(pVulkanInfo->vkDevice, textureImage, &memoryRequirements);
-
-        // Assign image to a device
-        VkMemoryAllocateInfo allocateInfo = {};
-        allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocateInfo.allocationSize = memoryRequirements.size;
-
-        allocateInfo.memoryTypeIndex = memoryTypeIndexWithGivenProperties(pVulkanInfo->vkDeviceMemoryProperties, 
-                                            memoryRequirements.memoryTypeBits,
-                                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-        VkDeviceMemory textureMemory;
-        err = vkAllocateMemory(pVulkanInfo->vkDevice, &allocateInfo, NULL, &textureMemory);
-        err = vkBindImageMemory(pVulkanInfo->vkDevice, textureImage, textureMemory, 0);
-
-        imageCreateInfo.tiling = VK_IMAGE_TILING_LINEAR;
-        imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
-        err = vkCreateImage(pVulkanInfo->vkDevice, &imageCreateInfo, NULL, &stageImage);
-
-        vkGetImageMemoryRequirements(pVulkanInfo->vkDevice, stageImage, &memoryRequirements);
-
-        allocateInfo.memoryTypeIndex = memoryTypeIndexWithGivenProperties(pVulkanInfo->vkDeviceMemoryProperties,
-            memoryRequirements.memoryTypeBits,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-        VkDeviceMemory stagingMemory;
-        err = vkAllocateMemory(pVulkanInfo->vkDevice, &allocateInfo, NULL, &stagingMemory);
-        err = vkBindImageMemory(pVulkanInfo->vkDevice, stageImage, stagingMemory, 0);
-
-        uint32_t* pTexelData = NULL;
-        err = vkMapMemory(pVulkanInfo->vkDevice, stagingMemory, 0, VK_WHOLE_SIZE, 0, reinterpret_cast<void**>(&pTexelData));
-
-        for (uint32_t h = 0; h < VkHelloImageHeight / 2; h++)
-        { 
-            for (uint32_t w = 0; w < VkHelloImageWidth / 2; w++)
-            {
-                uint32_t ti = (h * VkHelloImageWidth) + w;
-                pTexelData[ti] = ((uint32_t) ((w*255.0) / (float)VkHelloImageWidth) << 0)  |
-                                 ((uint32_t) ((h*255.0) / (float)VkHelloImageHeight)  << 8)  |
-                                 (0x0 << 16) |
-                                 (0xFF << 24);
-            }
+    pResBuilder->SetImageDimensions(VkHelloImageWidth, VkHelloImageHeight, 1);
+    pResBuilder->SetImageStaging(false);
+    pTexture = pResBuilder->GetImageResource();
+    
+    
+    VkMemoryRequirements memoryRequirements = {};
+    vkGetImageMemoryRequirements(pVulkanInfo->vkDevice, pTexture->image, &memoryRequirements);
+    
+    // Assign image to a device
+    VkMemoryAllocateInfo allocateInfo = {};
+    allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocateInfo.allocationSize = memoryRequirements.size;
+    
+    allocateInfo.memoryTypeIndex = memoryTypeIndexWithGivenProperties(pVulkanInfo->vkDeviceMemoryProperties, 
+                                        memoryRequirements.memoryTypeBits,
+                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    
+    VkDeviceMemory textureMemory;
+    err = vkAllocateMemory(pVulkanInfo->vkDevice, &allocateInfo, NULL, &textureMemory);
+    err = vkBindImageMemory(pVulkanInfo->vkDevice, pTexture->image, textureMemory, 0);
+    
+    
+    pResBuilder->SetImageStaging(true);
+    Resource* pStagingRes = pResBuilder->GetImageResource();
+    
+    
+    vkGetImageMemoryRequirements(pVulkanInfo->vkDevice, pStagingRes->image, &memoryRequirements);
+    
+    allocateInfo.memoryTypeIndex = memoryTypeIndexWithGivenProperties(pVulkanInfo->vkDeviceMemoryProperties,
+        memoryRequirements.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    
+    VkDeviceMemory stagingMemory;
+    err = vkAllocateMemory(pVulkanInfo->vkDevice, &allocateInfo, NULL, &stagingMemory);
+    err = vkBindImageMemory(pVulkanInfo->vkDevice, pStagingRes->image, stagingMemory, 0);
+    
+    uint32_t* pTexelData = NULL;
+    err = vkMapMemory(pVulkanInfo->vkDevice, stagingMemory, 0, VK_WHOLE_SIZE, 0, reinterpret_cast<void**>(&pTexelData));
+    
+    for (uint32_t h = 0; h < VkHelloImageHeight / 2; h++)
+    { 
+        for (uint32_t w = 0; w < VkHelloImageWidth / 2; w++)
+        {
+            uint32_t ti = (h * VkHelloImageWidth) + w;
+            pTexelData[ti] = ((uint32_t) ((w*255.0) / (float)VkHelloImageWidth) << 0)  |
+                             ((uint32_t) ((h*255.0) / (float)VkHelloImageHeight)  << 8)  |
+                             (0x0 << 16) |
+                             (0xFF << 24);
         }
-
-        vkUnmapMemory(pVulkanInfo->vkDevice, stagingMemory);
-
-        VkImageMemoryBarrier imageBarrier = {};
-        imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        imageBarrier.image = stageImage;
-        imageBarrier.oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
-        imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        imageBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-        imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageBarrier.subresourceRange.baseArrayLayer = 0;
-        imageBarrier.subresourceRange.layerCount = 1;
-        imageBarrier.subresourceRange.baseMipLevel = 0;
-        imageBarrier.subresourceRange.levelCount = 1;
-
-
-
-        VkImageCopy region = { 0 };
-        region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        region.dstSubresource.mipLevel = 0;
-        region.dstSubresource.baseArrayLayer = 0;
-        region.dstSubresource.layerCount = 1;
-
-        region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        region.srcSubresource.mipLevel = 0;
-        region.srcSubresource.baseArrayLayer = 0;
-        region.srcSubresource.layerCount = 1;
-
-        region.extent.depth = 1;
-        region.extent.width = VkHelloImageWidth;
-        region.extent.height = VkHelloImageHeight;
-
-        VkCommandBufferBeginInfo beginInfo = {};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        err = vkBeginCommandBuffer(cmdBuf, &beginInfo);
-
-        vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &imageBarrier);
-
-        imageBarrier.image = textureImage;
-        imageBarrier.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageBarrier.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; ///@todo this probably isn't correct...
-        vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &imageBarrier);
-
-
-        vkCmdCopyImage(cmdBuf, stageImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-        err = vkEndCommandBuffer(cmdBuf);
-
-        VkSubmitInfo submitInfo = {};
-
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &cmdBuf;
-        submitInfo.pWaitSemaphores = NULL; // &presentCompleteSemaphore;
-        submitInfo.waitSemaphoreCount = 0;
-
-        VkPipelineStageFlags pipe_stage_flags = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        submitInfo.pWaitDstStageMask = &pipe_stage_flags;
-
-        err = vkQueueSubmit(pVulkanInfo->vkQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(pVulkanInfo->vkQueue);
-
-
-        *pTextureImage = textureImage;
-
-        ///@todo free staging image memory, etc
-
-        ///@todo make generic creation paths & copy paths
     }
+    
+    vkUnmapMemory(pVulkanInfo->vkDevice, stagingMemory);
+    
+    VkImageMemoryBarrier imageBarrier = {};
+    imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageBarrier.image = pStagingRes->image;
+    imageBarrier.oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+    imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    imageBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+    imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageBarrier.subresourceRange.baseArrayLayer = 0;
+    imageBarrier.subresourceRange.layerCount = 1;
+    imageBarrier.subresourceRange.baseMipLevel = 0;
+    imageBarrier.subresourceRange.levelCount = 1;
 
+    VkImageCopy region = { 0 };
+    region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.dstSubresource.mipLevel = 0;
+    region.dstSubresource.baseArrayLayer = 0;
+    region.dstSubresource.layerCount = 1;
+    
+    region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.srcSubresource.mipLevel = 0;
+    region.srcSubresource.baseArrayLayer = 0;
+    region.srcSubresource.layerCount = 1;
+    
+    region.extent.depth = 1;
+    region.extent.width = VkHelloImageWidth;
+    region.extent.height = VkHelloImageHeight;
+    
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    
+    err = vkBeginCommandBuffer(cmdBuf, &beginInfo);
+    
+    vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &imageBarrier);
+    
+    imageBarrier.image = pTexture->image;
+    imageBarrier.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageBarrier.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; ///@todo this probably isn't correct...
+    vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &imageBarrier);
+    
+    
+    vkCmdCopyImage(cmdBuf,
+                   pStagingRes->image,
+                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                   pTexture->image,
+                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                   1,
+                   &region);
+    err = vkEndCommandBuffer(cmdBuf);
+    
+    VkSubmitInfo submitInfo = {};
+    
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &cmdBuf;
+    submitInfo.pWaitSemaphores = NULL; // &presentCompleteSemaphore;
+    submitInfo.waitSemaphoreCount = 0;
+    
+    VkPipelineStageFlags pipe_stage_flags = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    submitInfo.pWaitDstStageMask = &pipe_stage_flags;
+    
+    err = vkQueueSubmit(pVulkanInfo->vkQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(pVulkanInfo->vkQueue);
 
+    
+    
+    vkFreeMemory(pVulkanInfo->vkDevice, stagingMemory, NULL);
+    vkDestroyImage(pVulkanInfo->vkDevice, pStagingRes->image, NULL);
+    delete pStagingRes;
+    pStagingRes = NULL;
+    
+    ///@todo make generic creation paths & copy paths
+
+    return pTexture;
 }
 
 
@@ -800,15 +789,14 @@ int main()
     }
 
 
-    VkImage texture;
-    createTexture(&vulkanInfo, commandBuffer, &texture);
+    Resource* pTexture = createTexture(&vulkanInfo, commandBuffer);
 
     VkImageView textureImageView;
     VkImageViewCreateInfo imageViewCreateInfo = {};
     imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     imageViewCreateInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
     imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    imageViewCreateInfo.image = texture;
+    imageViewCreateInfo.image = pTexture->image;
     imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
     imageViewCreateInfo.subresourceRange.levelCount = 1;

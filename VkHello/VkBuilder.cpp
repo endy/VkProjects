@@ -10,7 +10,8 @@
 #include "VkBuilder.h"
 
 VkPipelineBuilder::VkPipelineBuilder(
-    VkDevice vkDevice) :
+    VkDevice vkDevice)
+    :
     m_device(vkDevice)
 {
 
@@ -197,3 +198,122 @@ VkPipeline VkPipelineBuilder::GetPipeline(
     return pipeline;
 }
 
+
+ResourceBuilder::ResourceBuilder(
+    VkDevice device)
+    :
+    m_device(device)
+{
+
+}
+
+ResourceBuilder::~ResourceBuilder()
+{
+
+}
+
+ResourceBuilder* ResourceBuilder::Create(
+    VkDevice device)
+{
+    ResourceBuilder* pBuilder = new ResourceBuilder(device);
+
+    if (pBuilder->Init() == false)
+    {
+        delete pBuilder;
+        pBuilder = nullptr;
+    }
+
+    return pBuilder;
+}
+
+void ResourceBuilder::Destroy()
+{
+    delete this;
+}
+
+bool ResourceBuilder::Init()
+{
+    m_imageCreateInfo.sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+
+    // Only support 2D
+    m_imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+
+    // Default format is R8G8B8A8, nothing else yet supported
+    m_imageCreateInfo.format    = VK_FORMAT_R8G8B8A8_UNORM;
+
+    // Mips, arrays, multisample not yet supported
+    m_imageCreateInfo.mipLevels     = 1;
+    m_imageCreateInfo.arrayLayers   = 1;
+    m_imageCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+
+    return true;
+}
+
+void ResourceBuilder::SetImageDimensions(
+    uint32_t width,
+    uint32_t height,
+    uint32_t depth)
+{
+    m_imageCreateInfo.extent.width  = width;
+    m_imageCreateInfo.extent.height = height;
+    m_imageCreateInfo.extent.depth  = depth;
+}
+
+void ResourceBuilder::SetImageStaging(
+    bool isStaging)
+{
+    if (isStaging == true)
+    {
+        m_imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+        m_imageCreateInfo.tiling        = VK_IMAGE_TILING_LINEAR;
+    }
+    else
+    {
+        m_imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        m_imageCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    }
+
+    ///@todo refactor usage to be externally customizable (and optimal..)
+    if (isStaging == true)
+    {
+        m_imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    }
+    else
+    {
+        ///@todo To be optimal, we need to mark the usage according to expected usage...
+        m_imageCreateInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                  VK_IMAGE_USAGE_SAMPLED_BIT;
+    }
+}
+
+Resource* ResourceBuilder::GetImageResource()
+{
+    Resource* pResource = new Resource();
+
+    VkResult result = vkCreateImage(m_device, &m_imageCreateInfo, NULL, &pResource->image);
+
+    if (result != VK_SUCCESS)
+    {
+        delete pResource;
+        pResource = NULL;
+    }
+
+    return pResource;
+}
+
+Resource* ResourceBuilder::GetBufferResource()
+{
+    Resource* pResource = new Resource();
+
+    VkResult result = vkCreateBuffer(m_device, &m_bufferCreateInfo, NULL, &pResource->buffer);
+
+    if (result != VK_SUCCESS)
+    {
+        delete pResource;
+        pResource = NULL;
+    }
+
+    return pResource;
+}
