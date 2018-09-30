@@ -88,8 +88,13 @@ public:
     Resource* GetImageResource();
     Resource* GetBufferResource();
 
+    // Image Functions
     void SetImageDimensions(uint32_t width, uint32_t height, uint32_t depth);
     void SetImageStaging(bool isStaging);
+
+    // Buffer Functions
+    void SetBufferSize(uint32_t size);
+    void SetBufferUsage(bool vertexBuffer);
 
 private:
     ResourceBuilder(VkDevice);

@@ -246,6 +246,10 @@ bool ResourceBuilder::Init()
     m_imageCreateInfo.arrayLayers   = 1;
     m_imageCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
 
+
+    // Buffer Init
+    m_bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+
     return true;
 }
 
@@ -302,6 +306,31 @@ Resource* ResourceBuilder::GetImageResource()
 
     return pResource;
 }
+
+void ResourceBuilder::SetBufferSize(
+    uint32_t size)
+{
+    m_bufferCreateInfo.size = size;
+}
+
+void ResourceBuilder::SetBufferUsage(
+    bool vertexBuffer)
+{
+    ///@todo How to handle other buffer types?
+    //  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+    //  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    //  VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+
+    if (vertexBuffer == true)
+    {
+        m_bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    }
+    else
+    {
+        m_bufferCreateInfo.usage = 0;
+    }
+}
+
 
 Resource* ResourceBuilder::GetBufferResource()
 {

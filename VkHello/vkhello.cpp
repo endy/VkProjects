@@ -1,7 +1,13 @@
 // Next Steps:
-//   Create Descriptor Set for Texture (done -- but resources are not freed for anything..)
-//   Modify FS to sample from texture
+// #1 Refactor resource memory mgmt into a class (resource class owns it but its externally allocated to refactor later?)
 
+// #2
+//   Refactor all vulkan config & setup into a separate class to clean up basic setup
+
+// #3
+//   Refactor descriptor set creation to a single utility function (creates layout + descriptor set)
+//      Thoughts -- maybe generate a list of resources used as input to create the descriptor?
+//      Problems -- how to map descriptors & programs?  Maybe need to group descriptor w/ program, program takes precidence
 
 
 #include <iostream>
@@ -192,6 +198,10 @@ void initRenderPassBeginInfo(
     renderPassBeginInfo->renderArea.extent.height = VkHelloImageHeight;
 }
 
+
+///@todo decouple descriptor layout from push constant layout
+///      build one descriptor set up front, use it for everything
+///      push constants tied to programs, so pipeline layout + program is a uint
 void createPipelineLayout(
     VkDevice device,
     VkDescriptorSetLayout* pDescriptorSetLayout,
@@ -247,6 +257,7 @@ void createPipelineLayout(
     result = vkCreatePipelineLayout(device, &layoutCreateInfo, NULL, pPipelineLayout);
 }
 
+///@todo create shader to wrap SPV loading & module creation, create program to group them?
 VkResult createGraphicsPipeline(
     VkDevice device,
     VkPipelineLayout layout,
@@ -889,17 +900,18 @@ int main()
 
     vkUpdateDescriptorSets(vulkanInfo.vkDevice, 2, descriptorWrites, 0, NULL);
 
-    // Create Vertex Buffer
-    VkBufferCreateInfo bufferCreateInfo = {};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    bufferCreateInfo.size  = 16 * 96; // 96 verts / 3 = 32 tris
+    ResourceBuilder* pResBuilder = ResourceBuilder::Create(vulkanInfo.vkDevice);
 
-    VkBuffer vertexBuffer;
-    err = vkCreateBuffer(vulkanInfo.vkDevice, &bufferCreateInfo, NULL, &vertexBuffer);
+    uint32_t vbSize = 16 * 96; // 96 verts / 3=32 tris
+    pResBuilder->SetBufferSize(16 * 96);
+
+    Resource* pVertexBuffer = pResBuilder->GetBufferResource();
+
+    pResBuilder->Destroy();
+    pResBuilder = NULL;
 
     VkMemoryRequirements memoryRequirements = {};
-    vkGetBufferMemoryRequirements(vulkanInfo.vkDevice, vertexBuffer, &memoryRequirements);
+    vkGetBufferMemoryRequirements(vulkanInfo.vkDevice, pVertexBuffer->buffer, &memoryRequirements);
 
     VkMemoryAllocateInfo allocateInfo = {};
     allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -910,7 +922,7 @@ int main()
                                                                       memoryRequirements.memoryTypeBits,
                                                                       (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
     err = vkAllocateMemory(vulkanInfo.vkDevice, &allocateInfo, NULL, &vertexBufferMemory);
-    err = vkBindBufferMemory(vulkanInfo.vkDevice, vertexBuffer, vertexBufferMemory, 0);
+    err = vkBindBufferMemory(vulkanInfo.vkDevice, pVertexBuffer->buffer, vertexBufferMemory, 0);
 
     float vbData[] = { -0.9f, -0.9f,
                         0.9f, -0.9f,
@@ -972,7 +984,7 @@ int main()
         //flip = !flip;
 
         VkDeviceSize offset = 0;
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, &offset);
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, &pVertexBuffer->buffer, &offset);
 
 
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
@@ -1036,7 +1048,7 @@ int main()
     err = vkDeviceWaitIdle(vulkanInfo.vkDevice);
 
     vkFreeMemory(vulkanInfo.vkDevice, vertexBufferMemory, NULL);
-    vkDestroyBuffer(vulkanInfo.vkDevice, vertexBuffer, NULL);
+    vkDestroyBuffer(vulkanInfo.vkDevice, pVertexBuffer->buffer, NULL);
 
     vkDestroyFramebuffer(vulkanInfo.vkDevice, framebuffers[0], NULL);
     vkDestroyFramebuffer(vulkanInfo.vkDevice, framebuffers[1], NULL);
