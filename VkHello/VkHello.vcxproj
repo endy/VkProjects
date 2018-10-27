@@ -75,6 +75,7 @@
     <ClCompile Include="vkhello.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="SimpleAllocator.h" />
     <ClInclude Include="VkBuilder.h" />
     <ClInclude Include="IvyWindow.h" />
   </ItemGroup>

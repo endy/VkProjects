@@ -10,9 +10,11 @@
 #include "VkBuilder.h"
 
 VkPipelineBuilder::VkPipelineBuilder(
-    VkDevice vkDevice)
+    VkDevice vkDevice,
+    const VkAllocationCallbacks* pAllocator)
     :
-    m_device(vkDevice)
+    m_device(vkDevice),
+    m_pAllocator(pAllocator)
 {
 
 }
@@ -23,9 +25,10 @@ VkPipelineBuilder::~VkPipelineBuilder()
 }
 
 VkPipelineBuilder* VkPipelineBuilder::Create(
-    VkDevice vkDevice)
+    VkDevice vkDevice,
+    const VkAllocationCallbacks* pAllocator)
 {
-    VkPipelineBuilder* pBuilder = new VkPipelineBuilder(vkDevice);
+    VkPipelineBuilder* pBuilder = new VkPipelineBuilder(vkDevice, pAllocator);
 
     if (pBuilder->Init() == false)
     {
@@ -193,16 +196,18 @@ VkPipeline VkPipelineBuilder::GetPipeline(
 
 
     VkPipeline pipeline;
-    VkResult vkResult = vkCreateGraphicsPipelines(m_device, 0, 1, &m_pipelineCreateInfo, NULL, &pipeline);
+    VkResult vkResult = vkCreateGraphicsPipelines(m_device, 0, 1, &m_pipelineCreateInfo, m_pAllocator, &pipeline);
 
     return pipeline;
 }
 
 
 ResourceBuilder::ResourceBuilder(
-    VkDevice device)
+    VkDevice device,
+    const VkAllocationCallbacks* pAllocator)
     :
-    m_device(device)
+    m_device(device),
+    m_pAllocator(pAllocator)
 {
 
 }
@@ -213,9 +218,10 @@ ResourceBuilder::~ResourceBuilder()
 }
 
 ResourceBuilder* ResourceBuilder::Create(
-    VkDevice device)
+    VkDevice device,
+    const VkAllocationCallbacks* pAllocator)
 {
-    ResourceBuilder* pBuilder = new ResourceBuilder(device);
+    ResourceBuilder* pBuilder = new ResourceBuilder(device, pAllocator);
 
     if (pBuilder->Init() == false)
     {
@@ -296,7 +302,7 @@ Resource* ResourceBuilder::GetImageResource()
 {
     Resource* pResource = new Resource();
 
-    VkResult result = vkCreateImage(m_device, &m_imageCreateInfo, NULL, &pResource->image);
+    VkResult result = vkCreateImage(m_device, &m_imageCreateInfo, m_pAllocator, &pResource->image);
 
     if (result != VK_SUCCESS)
     {
@@ -340,7 +346,7 @@ Resource* ResourceBuilder::GetBufferResource()
 {
     Resource* pResource = new Resource();
 
-    VkResult result = vkCreateBuffer(m_device, &m_bufferCreateInfo, NULL, &pResource->buffer);
+    VkResult result = vkCreateBuffer(m_device, &m_bufferCreateInfo, m_pAllocator, &pResource->buffer);
 
     if (result != VK_SUCCESS)
     {

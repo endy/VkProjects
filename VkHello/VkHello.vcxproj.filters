@@ -8,5 +8,6 @@
   <ItemGroup>
     <ClInclude Include="IvyWindow.h" />
     <ClInclude Include="VkBuilder.h" />
+    <ClInclude Include="SimpleAllocator.h" />
   </ItemGroup>
 </Project>

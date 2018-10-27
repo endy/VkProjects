@@ -19,8 +19,11 @@
 #include "vulkan\vulkan.h"
 
 #include "VkBuilder.h"
+#include "SimpleAllocator.h"
 
 #include "IvyWindow.h"
+
+const VkAllocationCallbacks* pGlobalAllocationCallbacks = &GlobalSimpleAllocator;
 
 // Scene Globals
 static const char* VkHelloApplicationName = "VkHello";
@@ -166,7 +169,7 @@ void createFramebuffer(
     imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
     imageViewCreateInfo.subresourceRange.levelCount = 1;
 
-    VkResult err = vkCreateImageView(device, &imageViewCreateInfo, NULL, pImageView);
+    VkResult err = vkCreateImageView(device, &imageViewCreateInfo, pGlobalAllocationCallbacks, pImageView);
 
     VkFramebufferCreateInfo framebufferCreateInfo = {};
 
@@ -179,7 +182,7 @@ void createFramebuffer(
     framebufferCreateInfo.attachmentCount = 1;
     framebufferCreateInfo.pAttachments = pImageView;
 
-    err = vkCreateFramebuffer(device, &framebufferCreateInfo, NULL, pFramebuffer);
+    err = vkCreateFramebuffer(device, &framebufferCreateInfo, pGlobalAllocationCallbacks, pFramebuffer);
 
 }
 
@@ -233,7 +236,7 @@ void createPipelineLayout(
     descriptorSetLayoutCreateInfo.bindingCount = 2;
     descriptorSetLayoutCreateInfo.pBindings = &layoutBinding[0];
 
-    result = vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, pDescriptorSetLayout);
+    result = vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, pGlobalAllocationCallbacks, pDescriptorSetLayout);
     
     VkPipelineLayoutCreateInfo layoutCreateInfo = 
     {
@@ -254,7 +257,7 @@ void createPipelineLayout(
     layoutCreateInfo.pushConstantRangeCount = 1;
     layoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 
-    result = vkCreatePipelineLayout(device, &layoutCreateInfo, NULL, pPipelineLayout);
+    result = vkCreatePipelineLayout(device, &layoutCreateInfo, pGlobalAllocationCallbacks, pPipelineLayout);
 }
 
 ///@todo create shader to wrap SPV loading & module creation, create program to group them?
@@ -293,13 +296,13 @@ VkResult createGraphicsPipeline(
 
     shaderModuleCreateInfo.codeSize = vert_shader.size();
     shaderModuleCreateInfo.pCode = (uint32_t*) vert_shader.data();
-    vkResult = vkCreateShaderModule(device, &shaderModuleCreateInfo, NULL, &vsModule);
+    vkResult = vkCreateShaderModule(device, &shaderModuleCreateInfo, pGlobalAllocationCallbacks, &vsModule);
 
     shaderModuleCreateInfo.codeSize = frag_shader.size();
     shaderModuleCreateInfo.pCode = (uint32_t*)frag_shader.data();
-    vkResult = vkCreateShaderModule(device, &shaderModuleCreateInfo, NULL, &fsModule);
+    vkResult = vkCreateShaderModule(device, &shaderModuleCreateInfo, pGlobalAllocationCallbacks, &fsModule);
  
-    VkPipelineBuilder* pBuilder = VkPipelineBuilder::Create(device);
+    VkPipelineBuilder* pBuilder = VkPipelineBuilder::Create(device, pGlobalAllocationCallbacks);
 
     pBuilder->SetViewportState(VkHelloImageWidth, VkHelloImageHeight);
     pBuilder->SetShaderState(vsModule, fsModule);
@@ -310,8 +313,8 @@ VkResult createGraphicsPipeline(
 
 
     // Free shader modules no longer needed
-    vkDestroyShaderModule(device, vsModule, NULL);
-    vkDestroyShaderModule(device, fsModule, NULL);
+    vkDestroyShaderModule(device, vsModule, pGlobalAllocationCallbacks);
+    vkDestroyShaderModule(device, fsModule, pGlobalAllocationCallbacks);
 
     return vkResult;
 }
@@ -393,7 +396,8 @@ void copyTexture(
     err = vkQueueSubmit(pVulkanInfo->vkQueue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(pVulkanInfo->vkQueue);
 
-    err = vkResetCommandPool(pVulkanInfo->vkDevice, pVulkanInfo->vkCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+    ///@todo How to handle this?
+   // err = vkResetCommandPool(pVulkanInfo->vkDevice, pVulkanInfo->vkCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
 }
 
 
@@ -406,7 +410,7 @@ Resource* createTexture(
     VkResult err;
     Resource* pTexture = NULL;
 
-    ResourceBuilder* pResBuilder = ResourceBuilder::Create(pVulkanInfo->vkDevice);
+    ResourceBuilder* pResBuilder = ResourceBuilder::Create(pVulkanInfo->vkDevice, pGlobalAllocationCallbacks);
 
 
     pResBuilder->SetImageDimensions(VkHelloImageWidth, VkHelloImageHeight, 1);
@@ -435,7 +439,7 @@ Resource* createTexture(
                                                                       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     VkDeviceMemory stagingMemory;
-    err = vkAllocateMemory(pVulkanInfo->vkDevice, &allocateInfo, NULL, &stagingMemory);
+    err = vkAllocateMemory(pVulkanInfo->vkDevice, &allocateInfo, pGlobalAllocationCallbacks, &stagingMemory);
     err = vkBindImageMemory(pVulkanInfo->vkDevice, pStagingRes->image, stagingMemory, 0);
 
     uint32_t* pTexelData = NULL;
@@ -458,8 +462,8 @@ Resource* createTexture(
 
     copyTexture(pVulkanInfo, cmdBuf, pStagingRes, pTexture);
 
-    vkDestroyImage(pVulkanInfo->vkDevice, pStagingRes->image, NULL);
-    vkFreeMemory(pVulkanInfo->vkDevice, stagingMemory, NULL);
+    vkDestroyImage(pVulkanInfo->vkDevice, pStagingRes->image, pGlobalAllocationCallbacks);
+    vkFreeMemory(pVulkanInfo->vkDevice, stagingMemory, pGlobalAllocationCallbacks);
 
     delete pStagingRes;
     pStagingRes = NULL;
@@ -483,7 +487,7 @@ void createSwapchain(
     surfaceCreateInfoKHR.hinstance = hInstance;
     surfaceCreateInfoKHR.hwnd = hWnd;
 
-    VkResult result = vkCreateWin32SurfaceKHR(pVulkanInfo->vkInstance, &surfaceCreateInfoKHR, NULL, &pSwapchainInfo->surface);
+    VkResult result = vkCreateWin32SurfaceKHR(pVulkanInfo->vkInstance, &surfaceCreateInfoKHR, pGlobalAllocationCallbacks, &pSwapchainInfo->surface);
 
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pVulkanInfo->vkPhysicalDevice, pSwapchainInfo->surface, &surfaceCapabilities);
@@ -515,7 +519,7 @@ void createSwapchain(
     swapchainCreateInfoKHR.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
     swapchainCreateInfoKHR.presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
-    result = vkCreateSwapchainKHR(pVulkanInfo->vkDevice, &swapchainCreateInfoKHR, NULL, &pSwapchainInfo->swapchain);
+    result = vkCreateSwapchainKHR(pVulkanInfo->vkDevice, &swapchainCreateInfoKHR, pGlobalAllocationCallbacks, &pSwapchainInfo->swapchain);
 
     delete[] surfaceFormats;
     delete[] presentModes;
@@ -660,7 +664,7 @@ bool initVulkan(VkHelloVulkanDeviceInfo* pVulkanInfo)
     instanceInfo.ppEnabledExtensionNames = &RequiredInstanceExtensionNames[0];
     instanceInfo.enabledExtensionCount = RequiredInstanceExtensionCount;
 
-    VkResult result = vkCreateInstance(&instanceInfo, NULL, &pVulkanInfo->vkInstance);
+    VkResult result = vkCreateInstance(&instanceInfo, pGlobalAllocationCallbacks, &pVulkanInfo->vkInstance);
 
     // Currently assume 1 device
     uint32_t physicalDeviceCount = 1;
@@ -672,7 +676,7 @@ bool initVulkan(VkHelloVulkanDeviceInfo* pVulkanInfo)
 
     if (checkRequiredDeviceExtensionsAvailable(pVulkanInfo->vkPhysicalDevice) == false)
     {
-        vkDestroyInstance(pVulkanInfo->vkInstance, NULL);
+        vkDestroyInstance(pVulkanInfo->vkInstance, pGlobalAllocationCallbacks);
         return false;
     }
 
@@ -719,7 +723,7 @@ bool initVulkan(VkHelloVulkanDeviceInfo* pVulkanInfo)
     deviceCreateInfo.ppEnabledExtensionNames = &RequiredDeviceExtensionNames[0];
     deviceCreateInfo.enabledExtensionCount   = sizeof(RequiredDeviceExtensionNames) / sizeof(char*);
 
-    vkCreateDevice(pVulkanInfo->vkPhysicalDevice, &deviceCreateInfo, NULL, &pVulkanInfo->vkDevice);
+    vkCreateDevice(pVulkanInfo->vkPhysicalDevice, &deviceCreateInfo, pGlobalAllocationCallbacks, &pVulkanInfo->vkDevice);
     vkGetDeviceQueue(pVulkanInfo->vkDevice, graphicsComputeQueueFamilyIndex, VkHelloDeviceQueueIndex, &pVulkanInfo->vkQueue);
 
     // Create Command Pool
@@ -728,7 +732,7 @@ bool initVulkan(VkHelloVulkanDeviceInfo* pVulkanInfo)
     commandPoolCreateInfo.queueFamilyIndex = graphicsComputeQueueFamilyIndex;
     commandPoolCreateInfo.flags = 0;  // flags=0 Choosing to reset buffers in bulk, not per command buffer
 
-    result = vkCreateCommandPool(pVulkanInfo->vkDevice, &commandPoolCreateInfo, NULL, &pVulkanInfo->vkCommandPool);
+    result = vkCreateCommandPool(pVulkanInfo->vkDevice, &commandPoolCreateInfo, pGlobalAllocationCallbacks, &pVulkanInfo->vkCommandPool);
 
     return true;
 }
@@ -796,7 +800,7 @@ int main()
     renderPassCreateInfo.pSubpasses = &subpassDescription;
 
     VkRenderPass renderPass;
-    err = vkCreateRenderPass(vulkanInfo.vkDevice, &renderPassCreateInfo, NULL, &renderPass);
+    err = vkCreateRenderPass(vulkanInfo.vkDevice, &renderPassCreateInfo, pGlobalAllocationCallbacks, &renderPass);
 
     // Create Framebuffers
     VkImageView* imageViews = new VkImageView[imageCount];
@@ -819,7 +823,7 @@ int main()
     imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
     imageViewCreateInfo.subresourceRange.levelCount = 1;
     imageViewCreateInfo.subresourceRange.layerCount = 1;
-    err = vkCreateImageView(vulkanInfo.vkDevice, &imageViewCreateInfo, NULL, &textureImageView);
+    err = vkCreateImageView(vulkanInfo.vkDevice, &imageViewCreateInfo, pGlobalAllocationCallbacks, &textureImageView);
 
 
     VkSampler   textureSampler;
@@ -831,7 +835,7 @@ int main()
     samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    err = vkCreateSampler(vulkanInfo.vkDevice, &samplerCreateInfo, NULL, &textureSampler);
+    err = vkCreateSampler(vulkanInfo.vkDevice, &samplerCreateInfo, pGlobalAllocationCallbacks, &textureSampler);
 
 
     // Create Pipeline
@@ -859,7 +863,7 @@ int main()
     descPoolCreateInfo.pPoolSizes    = &vkPoolSizes[0];
 
     VkDescriptorPool descPool;
-    err = vkCreateDescriptorPool(vulkanInfo.vkDevice, &descPoolCreateInfo, NULL, &descPool);
+    err = vkCreateDescriptorPool(vulkanInfo.vkDevice, &descPoolCreateInfo, pGlobalAllocationCallbacks, &descPool);
 
     VkDescriptorSetAllocateInfo descSetAllocInfo = {};
     descSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -908,7 +912,7 @@ int main()
     vkUpdateDescriptorSets(vulkanInfo.vkDevice, 2, descriptorWrites, 0, NULL);
 
 
-    ResourceBuilder* pResBuilder = ResourceBuilder::Create(vulkanInfo.vkDevice);
+    ResourceBuilder* pResBuilder = ResourceBuilder::Create(vulkanInfo.vkDevice, pGlobalAllocationCallbacks);
 
     uint32_t vbSize = 16 * 96; // 96 verts / 3=32 tris
     pResBuilder->SetBufferSize(vbSize);
@@ -963,7 +967,7 @@ int main()
         presentCompleteSemaphoreCreateInfo.pNext = NULL;
         presentCompleteSemaphoreCreateInfo.flags = 0;
 
-        err = vkCreateSemaphore(vulkanInfo.vkDevice, &presentCompleteSemaphoreCreateInfo, NULL, &presentCompleteSemaphore);
+        err = vkCreateSemaphore(vulkanInfo.vkDevice, &presentCompleteSemaphoreCreateInfo, pGlobalAllocationCallbacks, &presentCompleteSemaphore);
 
         uint32_t imageIndex = 0;
         err = vkAcquireNextImageKHR(vulkanInfo.vkDevice, swapchainInfo.swapchain, UINT64_MAX, presentCompleteSemaphore, 0, &imageIndex);
@@ -1043,7 +1047,7 @@ int main()
 
         vkQueueWaitIdle(vulkanInfo.vkQueue);
 
-        vkDestroySemaphore(vulkanInfo.vkDevice, presentCompleteSemaphore, NULL);
+        vkDestroySemaphore(vulkanInfo.vkDevice, presentCompleteSemaphore, pGlobalAllocationCallbacks);
 
 
         pWindow->ProcessMsg(&quit);
@@ -1054,31 +1058,31 @@ int main()
     // Wait, full stop, before proceeding to free/destroy objects
     err = vkDeviceWaitIdle(vulkanInfo.vkDevice);
 
-    vkFreeMemory(vulkanInfo.vkDevice, vertexBufferMemory, NULL);
-    vkDestroyBuffer(vulkanInfo.vkDevice, pVertexBuffer->buffer, NULL);
+    vkFreeMemory(vulkanInfo.vkDevice, vertexBufferMemory, pGlobalAllocationCallbacks);
+    vkDestroyBuffer(vulkanInfo.vkDevice, pVertexBuffer->buffer, pGlobalAllocationCallbacks);
 
-    vkDestroyFramebuffer(vulkanInfo.vkDevice, framebuffers[0], NULL);
-    vkDestroyFramebuffer(vulkanInfo.vkDevice, framebuffers[1], NULL);
+    vkDestroyFramebuffer(vulkanInfo.vkDevice, framebuffers[0], pGlobalAllocationCallbacks);
+    vkDestroyFramebuffer(vulkanInfo.vkDevice, framebuffers[1], pGlobalAllocationCallbacks);
 
-    vkDestroyImageView(vulkanInfo.vkDevice, imageViews[0], NULL);
-    vkDestroyImageView(vulkanInfo.vkDevice, imageViews[1], NULL);
+    vkDestroyImageView(vulkanInfo.vkDevice, imageViews[0], pGlobalAllocationCallbacks);
+    vkDestroyImageView(vulkanInfo.vkDevice, imageViews[1], pGlobalAllocationCallbacks);
 
-    vkDestroyPipeline(vulkanInfo.vkDevice, graphicsPipeline, NULL);
-    vkDestroyPipelineLayout(vulkanInfo.vkDevice, pipelineLayout, NULL);
-    vkDestroyDescriptorSetLayout(vulkanInfo.vkDevice, descriptorSetLayout, NULL);
+    vkDestroyPipeline(vulkanInfo.vkDevice, graphicsPipeline, pGlobalAllocationCallbacks);
+    vkDestroyPipelineLayout(vulkanInfo.vkDevice, pipelineLayout, pGlobalAllocationCallbacks);
+    vkDestroyDescriptorSetLayout(vulkanInfo.vkDevice, descriptorSetLayout, pGlobalAllocationCallbacks);
 
-    vkDestroyRenderPass(vulkanInfo.vkDevice, renderPass, NULL);
+    vkDestroyRenderPass(vulkanInfo.vkDevice, renderPass, pGlobalAllocationCallbacks);
 
     // Q: If calling reset with release flag on the pool, do you need to free the individual command buffs?
     // A: Reseting the buffer is not the same as freeing it.
     vkResetCommandPool(vulkanInfo.vkDevice, vulkanInfo.vkCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
     vkFreeCommandBuffers(vulkanInfo.vkDevice, vulkanInfo.vkCommandPool, 1, &commandBuffer); 
 
-    vkDestroyCommandPool(vulkanInfo.vkDevice, vulkanInfo.vkCommandPool, NULL);
-    vkDestroySwapchainKHR(vulkanInfo.vkDevice, swapchainInfo.swapchain, NULL);
-    vkDestroySurfaceKHR(vulkanInfo.vkInstance, swapchainInfo.surface, NULL);
-    vkDestroyDevice(vulkanInfo.vkDevice, NULL);
-    vkDestroyInstance(vulkanInfo.vkInstance, NULL);
+    vkDestroyCommandPool(vulkanInfo.vkDevice, vulkanInfo.vkCommandPool, pGlobalAllocationCallbacks);
+    vkDestroySwapchainKHR(vulkanInfo.vkDevice, swapchainInfo.swapchain, pGlobalAllocationCallbacks);
+    vkDestroySurfaceKHR(vulkanInfo.vkInstance, swapchainInfo.surface, pGlobalAllocationCallbacks);
+    vkDestroyDevice(vulkanInfo.vkDevice, pGlobalAllocationCallbacks);
+    vkDestroyInstance(vulkanInfo.vkInstance, pGlobalAllocationCallbacks);
 
     std::cout << "Bye Bye" << std::endl;
     return 0;

@@ -14,7 +14,7 @@
 class VkPipelineBuilder
 {
 public:
-    static VkPipelineBuilder* Create(VkDevice);
+    static VkPipelineBuilder* Create(VkDevice device, const VkAllocationCallbacks* pAllocator);
     virtual void Destroy();
 
     VkPipeline GetPipeline(VkPipelineLayout layout, VkRenderPass renderPass, uint32_t subpassIndex);
@@ -27,7 +27,7 @@ public:
 private:
     VkPipelineBuilder(const VkPipelineBuilder&); // disallow copy constructor
 
-    VkPipelineBuilder(VkDevice device);
+    VkPipelineBuilder(VkDevice device, const VkAllocationCallbacks* pAllocator);
 
     virtual ~VkPipelineBuilder();
 
@@ -38,7 +38,9 @@ private:
     bool Init();
 
 private:
-    VkDevice m_device;
+    VkDevice                     m_device;
+    const VkAllocationCallbacks* m_pAllocator;
+
     VkGraphicsPipelineCreateInfo              m_pipelineCreateInfo;
 
 
@@ -86,7 +88,7 @@ struct Resource
 class ResourceBuilder
 {
 public:
-    static ResourceBuilder* Create(VkDevice device);
+    static ResourceBuilder* Create(VkDevice device, const VkAllocationCallbacks* pAllocator);
 
     virtual void Destroy();
 
@@ -102,14 +104,15 @@ public:
     void SetBufferUsage(bool vertexBuffer);
 
 private:
-    ResourceBuilder(VkDevice);
+    ResourceBuilder(VkDevice device, const VkAllocationCallbacks* pAllocator);
     ResourceBuilder(ResourceBuilder&);  // Disallow copy constructor
 
     virtual ~ResourceBuilder();
 
     bool Init();
 
-    VkDevice m_device;
+    VkDevice                     m_device;
+    const VkAllocationCallbacks* m_pAllocator;
 
     VkImageCreateInfo  m_imageCreateInfo;
     VkBufferCreateInfo m_bufferCreateInfo;
