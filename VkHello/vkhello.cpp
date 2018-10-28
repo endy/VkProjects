@@ -19,6 +19,7 @@
 #include "vulkan\vulkan.h"
 
 #include "VkBuilder.h"
+#include "VkUtils.h"
 #include "SimpleAllocator.h"
 
 #include "IvyWindow.h"
@@ -34,8 +35,7 @@ static const uint32_t VkHelloImageHeight        = 256;
 static const VkClearValue FramebufferClearValue = { 1.0f, 1.0f, 0.0, 1.0f };
 
 // VkHello only uses 1 queue
-static const uint32_t VkHelloQueueCount       = 1;
-static const uint32_t VkHelloDeviceQueueIndex = 0;
+
 
 const char* RequiredInstanceExtensionNames[] =
 {
@@ -59,15 +59,6 @@ const char* RequiredLayerNames[] =
 };
 const uint32_t RequiredLayerCount = 0; // sizeof(RequiredLayerNames) / sizeof(RequiredLayerNames[0]);
 
-struct VkHelloVulkanDeviceInfo
-{
-    VkInstance                       vkInstance;
-    VkPhysicalDevice                 vkPhysicalDevice;
-    VkPhysicalDeviceMemoryProperties vkDeviceMemoryProperties;
-    VkDevice                         vkDevice;
-    VkQueue                          vkQueue;
-    VkCommandPool                    vkCommandPool;
-};
 
 struct VkHelloSwapchainInfo
 {
@@ -75,78 +66,6 @@ struct VkHelloSwapchainInfo
     VkSwapchainKHR swapchain;
     VkImage        images[2];
 };
-
-void printDeviceMemoryProperties(
-    VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties)
-{
-    int32_t memory_type_device_local_index = -1;
-
-    for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryHeapCount; i++)
-    {
-        std::cout << "Heap " << i << " flags: " << physicalDeviceMemoryProperties.memoryHeaps[i].flags << std::endl;
-
-        if (physicalDeviceMemoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-        {
-            std::cout << "                               " << "VK_MEMORY_HEAP_DEVICE_LOCAL_BIT" << std::endl;
-        }
-
-        std::cout << "Heap " << i << " size:  " << physicalDeviceMemoryProperties.memoryHeaps[i].size << std::endl;
-    }
-    for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryTypeCount; i++)
-    {
-        std::cout << "Memory Type " << i << " Heap Index: " << physicalDeviceMemoryProperties.memoryTypes[i].heapIndex << std::endl;
-        std::cout << "Memory Type " << i << " Property Flags:  " << physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags << std::endl;
-
-        if ((memory_type_device_local_index < 0) && (physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
-        {
-            memory_type_device_local_index = i;
-        }
-
-        if (physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-        {
-            std::cout << "                               " << "VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT" << std::endl;
-        }
-        if (physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-        {
-            std::cout << "                               " << "VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT" << std::endl;
-        }
-        if (physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-        {
-            std::cout << "                               " << "VK_MEMORY_PROPERTY_HOST_COHERENT_BIT" << std::endl;
-        }
-        if (physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
-        {
-            std::cout << "                               " << "VK_MEMORY_PROPERTY_HOST_CACHED_BIT" << std::endl;
-        }
-        if (physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)
-        {
-            std::cout << "                               " << "VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT" << std::endl;
-        }
-    }
-}
-
-int32_t memoryTypeIndexWithGivenProperties(
-    VkPhysicalDeviceMemoryProperties deviceMemoryProperties,
-    uint32_t                           memTypeBits,
-    VkMemoryPropertyFlags            requiredFlags)
-{
-    // printDeviceMemoryProperties(deviceMemoryProperties);
-
-    int32_t memoryType = -1;
-    static const uint32_t MemTypeBitsCount = sizeof(VkMemoryRequirements::memoryTypeBits) * 8;
-
-    for (uint32_t i = 0; i < MemTypeBitsCount; i++)
-    {
-        if (((memTypeBits >> i) & 0x1) &&
-            ((deviceMemoryProperties.memoryTypes[i].propertyFlags & requiredFlags) == requiredFlags))
-        {
-            memoryType = i;
-            break;
-        }        
-    }
-
-    return memoryType;
-}
 
 
 void createFramebuffer(
@@ -321,7 +240,7 @@ VkResult createGraphicsPipeline(
 
 
 void copyTexture(
-    VkHelloVulkanDeviceInfo* pVulkanInfo,
+    VkCoreInfo* pVulkanInfo,
     VkCommandBuffer cmdBuf,
     Resource* pSrc,
     Resource* pDst)
@@ -402,7 +321,7 @@ void copyTexture(
 
 
 Resource* createTexture(
-    VkHelloVulkanDeviceInfo* pVulkanInfo,
+    VkCoreInfo* pVulkanInfo,
     VkCommandBuffer cmdBuf)
 {
     // create texture
@@ -476,7 +395,7 @@ Resource* createTexture(
 
 
 void createSwapchain(
-    VkHelloVulkanDeviceInfo* pVulkanInfo,
+    VkCoreInfo* pVulkanInfo,
     HINSTANCE hInstance,
     HWND hWnd,
     VkHelloSwapchainInfo* pSwapchainInfo)
@@ -525,217 +444,6 @@ void createSwapchain(
     delete[] presentModes;
 }
 
-// Checks if all app-required extensions are available, returns false on first one found not to be present, else true
-bool checkRequiredInstanceExtensionsAvailable()
-{
-    bool success = true;
-
-    uint32_t instanceExtensionCount = 0;
-    VkResult err = vkEnumerateInstanceExtensionProperties(NULL, &instanceExtensionCount, NULL);
-    VkExtensionProperties* pInstanceExtensions = new VkExtensionProperties[instanceExtensionCount];
-    err = vkEnumerateInstanceExtensionProperties(NULL, &instanceExtensionCount, pInstanceExtensions);
-
-    for (uint32_t ri = 0; ri < RequiredInstanceExtensionCount; ++ri)
-    {
-        uint32_t requiredNameLength = strlen(RequiredInstanceExtensionNames[ri]);
-        bool foundExtension = false;
-        for (uint32_t qi = 0; qi < instanceExtensionCount; ++qi)
-        {
-            if ((strlen(pInstanceExtensions[qi].extensionName) == requiredNameLength) &&
-                (strncmp(pInstanceExtensions[qi].extensionName, RequiredInstanceExtensionNames[ri], requiredNameLength) == 0))
-            {
-                foundExtension = true;
-                break;
-            }
-        }
-
-        if (foundExtension == false)
-        {
-            std::cout << "Required extension " << RequiredInstanceExtensionNames[ri] << " is not available." << std::endl;
-            success = false;
-            break;
-        }
-    }
-
-    delete[] pInstanceExtensions;
-
-    return success;
-}
-
-bool checkRequiredInstanceLayersAvailable()
-{
-    bool success = true;
-
-    uint32_t layerPropertyCount = 0;
-    vkEnumerateInstanceLayerProperties(&layerPropertyCount, NULL);
-    VkLayerProperties* pLayerProperties = new VkLayerProperties[layerPropertyCount];
-    vkEnumerateInstanceLayerProperties(&layerPropertyCount, &pLayerProperties[0]);
-
-    for (uint32_t ri = 0; ri < RequiredLayerCount; ++ri)
-    {
-        uint32_t requiredNameLength = strlen(RequiredLayerNames[ri]);
-        bool foundLayer = false;
-        for (uint32_t qi = 0; qi < layerPropertyCount; ++qi)
-        {
-            if ((strlen(pLayerProperties[qi].layerName) == requiredNameLength) &&
-                (strncmp(pLayerProperties[qi].layerName, RequiredLayerNames[ri], requiredNameLength) == 0))
-            {
-                foundLayer = true;
-                break;
-            }
-        }
-
-        if (foundLayer == false)
-        {
-            std::cout << "Required layer " << RequiredLayerNames[ri] << " is not available." << std::endl;
-            success = false;
-            break;
-        }
-    }
-
-    delete[] pLayerProperties;
-
-    return success;
-}
-
-bool checkRequiredDeviceExtensionsAvailable(
-    VkPhysicalDevice physicalDevice)
-{
-    bool success = true;
-
-    uint32_t deviceExtensionPropertyCount = 0;
-    vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &deviceExtensionPropertyCount, NULL);
-    VkExtensionProperties* pDeviceExtensionProperties = new VkExtensionProperties[deviceExtensionPropertyCount];
-    vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &deviceExtensionPropertyCount, &pDeviceExtensionProperties[0]);
-
-    for (uint32_t ri = 0; ri < RequiredDeviceExtensionCount; ++ri)
-    {
-        uint32_t requiredNameLength = strlen(RequiredDeviceExtensionNames[ri]);
-        bool foundLayer = false;
-        for (uint32_t qi = 0; qi < deviceExtensionPropertyCount; ++qi)
-        {
-            if ((strlen(pDeviceExtensionProperties[qi].extensionName) == requiredNameLength) &&
-                (strncmp(pDeviceExtensionProperties[qi].extensionName, RequiredDeviceExtensionNames[ri], requiredNameLength) == 0))
-            {
-                foundLayer = true;
-                break;
-            }
-        }
-
-        if (foundLayer == false)
-        {
-            std::cout << "Required device extension " << RequiredDeviceExtensionNames[ri] << " is not available." << std::endl;
-            success = false;
-            break;
-        }
-    }
-
-    delete[] pDeviceExtensionProperties;
-
-    return success;
-}
-
-
-
-// Heavy loading for Vulkan Initialization:
-//  (0. Required extension support checking)
-//   1. Create instance and query physical device
-//   2. Create device, queue, and command pool
-bool initVulkan(VkHelloVulkanDeviceInfo* pVulkanInfo)
-{
-    if ((checkRequiredInstanceExtensionsAvailable() == false) ||
-        (checkRequiredInstanceLayersAvailable() == false))
-    {
-        return false;
-    }
-
-    VkApplicationInfo appInfo = {};
-    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = VkHelloApplicationName;
-    appInfo.pEngineName = VkHelloEngineName;
-    appInfo.apiVersion = VK_API_VERSION_1_0;
-
-    VkInstanceCreateInfo instanceInfo = {};
-    instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    instanceInfo.flags = 0;
-    instanceInfo.pApplicationInfo = &appInfo;
-    instanceInfo.ppEnabledLayerNames = &RequiredLayerNames[0];
-    instanceInfo.enabledLayerCount = RequiredLayerCount;
-    instanceInfo.ppEnabledExtensionNames = &RequiredInstanceExtensionNames[0];
-    instanceInfo.enabledExtensionCount = RequiredInstanceExtensionCount;
-
-    VkResult result = vkCreateInstance(&instanceInfo, pGlobalAllocationCallbacks, &pVulkanInfo->vkInstance);
-
-    // Currently assume 1 device
-    uint32_t physicalDeviceCount = 1;
-    result = vkEnumeratePhysicalDevices(pVulkanInfo->vkInstance, &physicalDeviceCount, &pVulkanInfo->vkPhysicalDevice);
-
-    // 
-    VkPhysicalDeviceProperties physicalDeviceProperties = {};
-    vkGetPhysicalDeviceProperties(pVulkanInfo->vkPhysicalDevice, &physicalDeviceProperties);
-
-    if (checkRequiredDeviceExtensionsAvailable(pVulkanInfo->vkPhysicalDevice) == false)
-    {
-        vkDestroyInstance(pVulkanInfo->vkInstance, pGlobalAllocationCallbacks);
-        return false;
-    }
-
-    vkGetPhysicalDeviceMemoryProperties(pVulkanInfo->vkPhysicalDevice, &pVulkanInfo->vkDeviceMemoryProperties);
-
-    uint32_t queueFamilyPropertiesCount;
-    vkGetPhysicalDeviceQueueFamilyProperties(pVulkanInfo->vkPhysicalDevice, &queueFamilyPropertiesCount, NULL);
-    VkQueueFamilyProperties* pQueueFamilyProperties = new VkQueueFamilyProperties[queueFamilyPropertiesCount];
-
-    vkGetPhysicalDeviceQueueFamilyProperties(pVulkanInfo->vkPhysicalDevice, &queueFamilyPropertiesCount, &pQueueFamilyProperties[0]);
-
-    int32_t graphicsComputeQueueFamilyIndex = -1;
-
-    // get graphics queue that supports presents
-    for (uint32_t i = 0; i < queueFamilyPropertiesCount; ++i)
-    {
-        if (((pQueueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) ||
-            ((pQueueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
-        {
-            continue;
-        }
-
-        if (vkGetPhysicalDeviceWin32PresentationSupportKHR(pVulkanInfo->vkPhysicalDevice, i) == VK_FALSE)
-        {
-            continue;
-        }
-
-        graphicsComputeQueueFamilyIndex = i;
-    }
-
-    // Create VkDevice and queue for that device
-    float queuePriorities[] = { 1.0 };
-
-    VkDeviceQueueCreateInfo queueCreateInfo = {};
-    queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfo.queueFamilyIndex = graphicsComputeQueueFamilyIndex;
-    queueCreateInfo.queueCount       = VkHelloQueueCount;
-    queueCreateInfo.pQueuePriorities = &queuePriorities[0];
-
-    VkDeviceCreateInfo deviceCreateInfo      = {};
-    deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceCreateInfo.pQueueCreateInfos       = &queueCreateInfo;
-    deviceCreateInfo.queueCreateInfoCount    = VkHelloQueueCount;
-    deviceCreateInfo.ppEnabledExtensionNames = &RequiredDeviceExtensionNames[0];
-    deviceCreateInfo.enabledExtensionCount   = sizeof(RequiredDeviceExtensionNames) / sizeof(char*);
-
-    vkCreateDevice(pVulkanInfo->vkPhysicalDevice, &deviceCreateInfo, pGlobalAllocationCallbacks, &pVulkanInfo->vkDevice);
-    vkGetDeviceQueue(pVulkanInfo->vkDevice, graphicsComputeQueueFamilyIndex, VkHelloDeviceQueueIndex, &pVulkanInfo->vkQueue);
-
-    // Create Command Pool
-    VkCommandPoolCreateInfo commandPoolCreateInfo = {};
-    commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    commandPoolCreateInfo.queueFamilyIndex = graphicsComputeQueueFamilyIndex;
-    commandPoolCreateInfo.flags = 0;  // flags=0 Choosing to reset buffers in bulk, not per command buffer
-
-    result = vkCreateCommandPool(pVulkanInfo->vkDevice, &commandPoolCreateInfo, pGlobalAllocationCallbacks, &pVulkanInfo->vkCommandPool);
-
-    return true;
-}
 
 int main()
 {
@@ -743,8 +451,25 @@ int main()
     Ivy::IvyWindow* pWindow = Ivy::IvyWindow::Create(VkHelloImageWidth, VkHelloImageHeight);
 
     // Init Vulkan
-    VkHelloVulkanDeviceInfo vulkanInfo = {};
-    if (initVulkan(&vulkanInfo) == false)
+    AppInfo appInfo =
+    {
+        VkHelloApplicationName,
+        VkHelloEngineName,
+        VK_API_VERSION_1_1,
+
+        RequiredInstanceExtensionNames,
+        RequiredInstanceExtensionCount,
+        RequiredLayerNames,
+        RequiredLayerCount,
+
+        RequiredDeviceExtensionNames,
+        RequiredDeviceExtensionCount,
+
+        pGlobalAllocationCallbacks
+    };
+
+    VkCoreInfo vulkanInfo = {};
+    if (initVulkan(&appInfo, &vulkanInfo) == false)
     {
         return -1;
     }

@@ -5,7 +5,7 @@
 
 #include <cstdio>
 
-#define SIMPLE_ENABLE_PRINTS 1
+#define SIMPLE_ENABLE_PRINTS 0
 
 #if SIMPLE_ENABLE_PRINTS
 #define SIMPLE_PRINT(x, ...) printf(x, __VA_ARGS__)

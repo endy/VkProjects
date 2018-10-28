@@ -78,6 +78,7 @@
     <ClInclude Include="SimpleAllocator.h" />
     <ClInclude Include="VkBuilder.h" />
     <ClInclude Include="IvyWindow.h" />
+    <ClInclude Include="VkUtils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
