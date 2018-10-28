@@ -9,9 +9,13 @@
 
 #pragma once
 
+///@todo Configure this for portability
+#define VK_USE_PLATFORM_WIN32_KHR 1
 
 #include "vulkan\vulkan.h"
 
+
+#include <iostream>
 
 void printDeviceMemoryProperties(
     VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties)

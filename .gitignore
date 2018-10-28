@@ -5,3 +5,5 @@ Debug
 *.db
 *.opendb
 *.user
+Release
+*.exe

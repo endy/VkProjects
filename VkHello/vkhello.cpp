@@ -10,16 +10,14 @@
 //      Problems -- how to map descriptors & programs?  Maybe need to group descriptor w/ program, program takes precidence
 
 
-#include <iostream>
 #include <fstream>
 #include <vector>
 
-#define VK_USE_PLATFORM_WIN32_KHR 1
 
-#include "vulkan\vulkan.h"
-
-#include "VkBuilder.h"
+///@todo refactor vkutils/vkbuilder to inherit common file to avoid include dependency
 #include "VkUtils.h"
+#include "VkBuilder.h"
+
 #include "SimpleAllocator.h"
 
 #include "IvyWindow.h"
@@ -33,8 +31,6 @@ static const char* VkHelloEngineName      = "IvyEngine";
 static const uint32_t VkHelloImageWidth         = 256;
 static const uint32_t VkHelloImageHeight        = 256;
 static const VkClearValue FramebufferClearValue = { 1.0f, 1.0f, 0.0, 1.0f };
-
-// VkHello only uses 1 queue
 
 
 const char* RequiredInstanceExtensionNames[] =
