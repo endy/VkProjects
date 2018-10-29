@@ -4,6 +4,7 @@
     <ClCompile Include="vkhello.cpp" />
     <ClCompile Include="..\include\IvyWindow.cpp" />
     <ClCompile Include="..\include\VkBuilder.cpp" />
+    <ClCompile Include="..\include\SimpleAllocator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\IvyWindow.h" />

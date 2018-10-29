@@ -116,13 +116,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\include\IvyWindow.cpp" />
-    <ClCompile Include="..\include\VkBuilder.cpp" />
     <ClCompile Include="vkempty.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\IvyWindow.h" />
-    <ClInclude Include="..\include\SimpleAllocator.h" />
-    <ClInclude Include="..\include\VkBuilder.h" />
     <ClInclude Include="..\include\VkUtils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

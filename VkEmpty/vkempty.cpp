@@ -13,7 +13,6 @@
 
 #include "IvyWindow.h"
 
-
 const char* RequiredInstanceExtensionNames[] =
 {
     "VK_EXT_debug_report",
@@ -48,7 +47,7 @@ int main()
     // Init Vulkan
 
     VkCoreInfo vulkanInfo = {};
-    if (initVulkan(&appInfo, &vulkanInfo) == false)
+    if (createVulkan(&appInfo, &vulkanInfo) == false)
     {
         return -1;
     }
@@ -62,6 +61,7 @@ int main()
         pWindow->ProcessMsg(&quit);
     }
 
+    destroyVulkan(&vulkanInfo, NULL);
 
     return 0;
 }

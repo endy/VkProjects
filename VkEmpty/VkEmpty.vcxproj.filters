@@ -3,12 +3,9 @@
   <ItemGroup>
     <ClCompile Include="vkempty.cpp" />
     <ClCompile Include="..\include\IvyWindow.cpp" />
-    <ClCompile Include="..\include\VkBuilder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\IvyWindow.h" />
-    <ClInclude Include="..\include\SimpleAllocator.h" />
-    <ClInclude Include="..\include\VkBuilder.h" />
     <ClInclude Include="..\include\VkUtils.h" />
   </ItemGroup>
 </Project>

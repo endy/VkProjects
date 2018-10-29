@@ -71,6 +71,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\include\IvyWindow.cpp" />
+    <ClCompile Include="..\include\SimpleAllocator.cpp" />
     <ClCompile Include="..\include\VkBuilder.cpp" />
     <ClCompile Include="vkhello.cpp" />
   </ItemGroup>

@@ -22,7 +22,7 @@
 
 #include "IvyWindow.h"
 
-const VkAllocationCallbacks* pGlobalAllocationCallbacks = &GlobalSimpleAllocator;
+const VkAllocationCallbacks* pGlobalAllocationCallbacks = GetSimpleAllocator();
 
 // Scene Globals
 static const char* VkHelloApplicationName = "VkHello";
@@ -56,50 +56,6 @@ const char* RequiredLayerNames[] =
 const uint32_t RequiredLayerCount = 0; // sizeof(RequiredLayerNames) / sizeof(RequiredLayerNames[0]);
 
 
-struct VkHelloSwapchainInfo
-{
-    VkSurfaceKHR   surface;
-    VkSwapchainKHR swapchain;
-    VkImage        images[2];
-};
-
-
-void createFramebuffer(
-    VkDevice device,
-    VkRenderPass renderPass,
-    VkImage image,
-    VkImageView* pImageView,
-    VkFramebuffer* pFramebuffer)
-{
-    VkImageViewCreateInfo imageViewCreateInfo = {};
-
-    imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    imageViewCreateInfo.image = image;
-    imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    imageViewCreateInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
-
-    imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-    imageViewCreateInfo.subresourceRange.layerCount = 1;
-    imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-    imageViewCreateInfo.subresourceRange.levelCount = 1;
-
-    VkResult err = vkCreateImageView(device, &imageViewCreateInfo, pGlobalAllocationCallbacks, pImageView);
-
-    VkFramebufferCreateInfo framebufferCreateInfo = {};
-
-    framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    framebufferCreateInfo.width = VkHelloImageWidth;
-    framebufferCreateInfo.height = VkHelloImageHeight;
-    framebufferCreateInfo.layers = 1;
-
-    framebufferCreateInfo.renderPass = renderPass;
-    framebufferCreateInfo.attachmentCount = 1;
-    framebufferCreateInfo.pAttachments = pImageView;
-
-    err = vkCreateFramebuffer(device, &framebufferCreateInfo, pGlobalAllocationCallbacks, pFramebuffer);
-
-}
 
 void initRenderPassBeginInfo(
     VkRenderPass renderPass,
@@ -390,60 +346,9 @@ Resource* createTexture(
 }
 
 
-void createSwapchain(
-    VkCoreInfo* pVulkanInfo,
-    HINSTANCE hInstance,
-    HWND hWnd,
-    VkHelloSwapchainInfo* pSwapchainInfo)
-{
-    VkWin32SurfaceCreateInfoKHR surfaceCreateInfoKHR = {};
-
-    surfaceCreateInfoKHR.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    surfaceCreateInfoKHR.hinstance = hInstance;
-    surfaceCreateInfoKHR.hwnd = hWnd;
-
-    VkResult result = vkCreateWin32SurfaceKHR(pVulkanInfo->vkInstance, &surfaceCreateInfoKHR, pGlobalAllocationCallbacks, &pSwapchainInfo->surface);
-
-    VkSurfaceCapabilitiesKHR surfaceCapabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pVulkanInfo->vkPhysicalDevice, pSwapchainInfo->surface, &surfaceCapabilities);
-
-    uint32_t surfaceFormatCount = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(pVulkanInfo->vkPhysicalDevice, pSwapchainInfo->surface, &surfaceFormatCount, NULL);
-    VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[surfaceFormatCount];
-    vkGetPhysicalDeviceSurfaceFormatsKHR(pVulkanInfo->vkPhysicalDevice, pSwapchainInfo->surface, &surfaceFormatCount, &surfaceFormats[0]);
-
-    uint32_t presentModeCount = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(pVulkanInfo->vkPhysicalDevice, pSwapchainInfo->surface, &presentModeCount, NULL);
-    VkPresentModeKHR* presentModes = new VkPresentModeKHR[presentModeCount];
-    vkGetPhysicalDeviceSurfacePresentModesKHR(pVulkanInfo->vkPhysicalDevice, pSwapchainInfo->surface, &presentModeCount, &presentModes[0]);
-
-    VkBool32 supported = FALSE;
-    vkGetPhysicalDeviceSurfaceSupportKHR(pVulkanInfo->vkPhysicalDevice, 0, pSwapchainInfo->surface, &supported);
-
-    VkSwapchainCreateInfoKHR swapchainCreateInfoKHR = {};
-    swapchainCreateInfoKHR.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    swapchainCreateInfoKHR.minImageCount = surfaceCapabilities.minImageCount;
-    swapchainCreateInfoKHR.surface = pSwapchainInfo->surface;
-    swapchainCreateInfoKHR.imageExtent.width = surfaceCapabilities.currentExtent.width;
-    swapchainCreateInfoKHR.imageExtent.height = surfaceCapabilities.currentExtent.width;
-    swapchainCreateInfoKHR.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
-    swapchainCreateInfoKHR.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    swapchainCreateInfoKHR.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-    swapchainCreateInfoKHR.imageArrayLayers = 1;
-    swapchainCreateInfoKHR.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swapchainCreateInfoKHR.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-    swapchainCreateInfoKHR.presentMode = VK_PRESENT_MODE_FIFO_KHR;
-
-    result = vkCreateSwapchainKHR(pVulkanInfo->vkDevice, &swapchainCreateInfoKHR, pGlobalAllocationCallbacks, &pSwapchainInfo->swapchain);
-
-    delete[] surfaceFormats;
-    delete[] presentModes;
-}
-
 
 int main()
 {
-    VkResult err;
     Ivy::IvyWindow* pWindow = Ivy::IvyWindow::Create(VkHelloImageWidth, VkHelloImageHeight);
 
     // Init Vulkan
@@ -465,22 +370,14 @@ int main()
     };
 
     VkCoreInfo vulkanInfo = {};
-    if (initVulkan(&appInfo, &vulkanInfo) == false)
+    if (createVulkan(&appInfo, &vulkanInfo) == false)
     {
         return -1;
     }
 
     // Init Swapchain
-    VkHelloSwapchainInfo swapchainInfo = {};
-    createSwapchain(&vulkanInfo, GetModuleHandle(NULL), pWindow->GetHwnd(), &swapchainInfo);
-
-    uint32_t imageCount = 0;
-    err = vkGetSwapchainImagesKHR(vulkanInfo.vkDevice, swapchainInfo.swapchain, &imageCount, NULL);
-
-    VkImage* swapchainImages = new VkImage[imageCount];
-    err = vkGetSwapchainImagesKHR(vulkanInfo.vkDevice, swapchainInfo.swapchain, &imageCount, &swapchainImages[0]);
-
-    ///@todo aggregate swapchain images/framebuffers somehow
+    VkSwapchainInfo swapchainInfo = {};
+    createSwapchain(&vulkanInfo, GetModuleHandle(NULL), pWindow->GetHwnd(), pGlobalAllocationCallbacks, &swapchainInfo);
 
 
 
@@ -521,14 +418,23 @@ int main()
     renderPassCreateInfo.pSubpasses = &subpassDescription;
 
     VkRenderPass renderPass;
-    err = vkCreateRenderPass(vulkanInfo.vkDevice, &renderPassCreateInfo, pGlobalAllocationCallbacks, &renderPass);
+    VK_CHECK(vkCreateRenderPass(vulkanInfo.vkDevice, &renderPassCreateInfo, pGlobalAllocationCallbacks, &renderPass));
 
     // Create Framebuffers
-    VkImageView* imageViews = new VkImageView[imageCount];
-    VkFramebuffer* framebuffers = new VkFramebuffer[imageCount];
-    for (uint32_t i = 0; i < imageCount; ++i)
+    VkFramebuffer* framebuffers = new VkFramebuffer[swapchainInfo.swapchainImageCount];
+    for (uint32_t i = 0; i < swapchainInfo.swapchainImageCount; ++i)
     {
-        createFramebuffer(vulkanInfo.vkDevice, renderPass, swapchainImages[i], &imageViews[i], &framebuffers[i]);
+        VkFramebufferCreateInfo framebufferCreateInfo = {};
+
+        framebufferCreateInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferCreateInfo.width           = VkHelloImageWidth;
+        framebufferCreateInfo.height          = VkHelloImageHeight;
+        framebufferCreateInfo.layers          = 1;
+        framebufferCreateInfo.renderPass      = renderPass;
+        framebufferCreateInfo.attachmentCount = 1;
+        framebufferCreateInfo.pAttachments    = &swapchainInfo.pSwapchainImageViews[i];
+
+        VK_CHECK(vkCreateFramebuffer(vulkanInfo.vkDevice, &framebufferCreateInfo, GetSimpleAllocator(), &framebuffers[i]));
     }
 
 
@@ -544,7 +450,7 @@ int main()
     imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
     imageViewCreateInfo.subresourceRange.levelCount = 1;
     imageViewCreateInfo.subresourceRange.layerCount = 1;
-    err = vkCreateImageView(vulkanInfo.vkDevice, &imageViewCreateInfo, pGlobalAllocationCallbacks, &textureImageView);
+    VK_CHECK(vkCreateImageView(vulkanInfo.vkDevice, &imageViewCreateInfo, pGlobalAllocationCallbacks, &textureImageView));
 
 
     VkSampler   textureSampler;
@@ -556,7 +462,7 @@ int main()
     samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    err = vkCreateSampler(vulkanInfo.vkDevice, &samplerCreateInfo, pGlobalAllocationCallbacks, &textureSampler);
+    VK_CHECK(vkCreateSampler(vulkanInfo.vkDevice, &samplerCreateInfo, pGlobalAllocationCallbacks, &textureSampler));
 
 
     // Create Pipeline
@@ -584,7 +490,7 @@ int main()
     descPoolCreateInfo.pPoolSizes    = &vkPoolSizes[0];
 
     VkDescriptorPool descPool;
-    err = vkCreateDescriptorPool(vulkanInfo.vkDevice, &descPoolCreateInfo, pGlobalAllocationCallbacks, &descPool);
+    VK_CHECK(vkCreateDescriptorPool(vulkanInfo.vkDevice, &descPoolCreateInfo, pGlobalAllocationCallbacks, &descPool));
 
     VkDescriptorSetAllocateInfo descSetAllocInfo = {};
     descSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -593,7 +499,7 @@ int main()
     descSetAllocInfo.descriptorPool = descPool;
 
     VkDescriptorSet descSet;
-    err = vkAllocateDescriptorSets(vulkanInfo.vkDevice, &descSetAllocInfo, &descSet);
+    VK_CHECK(vkAllocateDescriptorSets(vulkanInfo.vkDevice, &descSetAllocInfo, &descSet));
 
     // Update Descriptor Set
     VkDescriptorImageInfo descriptorImageInfo[2];
@@ -653,8 +559,8 @@ int main()
     allocateInfo.memoryTypeIndex = memoryTypeIndexWithGivenProperties(vulkanInfo.vkDeviceMemoryProperties,
                                                                       pVertexBuffer->memReqs.memoryTypeBits,
                                                                       (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-    err = vkAllocateMemory(vulkanInfo.vkDevice, &allocateInfo, NULL, &vertexBufferMemory);
-    err = vkBindBufferMemory(vulkanInfo.vkDevice, pVertexBuffer->buffer, vertexBufferMemory, 0);
+    VK_CHECK(vkAllocateMemory(vulkanInfo.vkDevice, &allocateInfo, NULL, &vertexBufferMemory));
+    VK_CHECK(vkBindBufferMemory(vulkanInfo.vkDevice, pVertexBuffer->buffer, vertexBufferMemory, 0));
 
     float vbData[] = { -0.9f, -0.9f,
                         0.9f, -0.9f,
@@ -688,10 +594,10 @@ int main()
         presentCompleteSemaphoreCreateInfo.pNext = NULL;
         presentCompleteSemaphoreCreateInfo.flags = 0;
 
-        err = vkCreateSemaphore(vulkanInfo.vkDevice, &presentCompleteSemaphoreCreateInfo, pGlobalAllocationCallbacks, &presentCompleteSemaphore);
+        VK_CHECK(vkCreateSemaphore(vulkanInfo.vkDevice, &presentCompleteSemaphoreCreateInfo, pGlobalAllocationCallbacks, &presentCompleteSemaphore));
 
         uint32_t imageIndex = 0;
-        err = vkAcquireNextImageKHR(vulkanInfo.vkDevice, swapchainInfo.swapchain, UINT64_MAX, presentCompleteSemaphore, 0, &imageIndex);
+        VK_CHECK(vkAcquireNextImageKHR(vulkanInfo.vkDevice, swapchainInfo.swapchain, UINT64_MAX, presentCompleteSemaphore, 0, &imageIndex));
 
         VkRenderPassBeginInfo renderPassBeginInfo = {};
         initRenderPassBeginInfo(renderPass, framebuffers[imageIndex], &renderPassBeginInfo);
@@ -704,8 +610,8 @@ int main()
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;  // HW: regenerate per frame vs cache per frame
 
-        err = vkResetCommandPool(vulkanInfo.vkDevice, vulkanInfo.vkCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-        err = vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        VK_CHECK(vkResetCommandPool(vulkanInfo.vkDevice, vulkanInfo.vkCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT));
+        VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 0, NULL);
 
@@ -735,14 +641,14 @@ int main()
         prePresentBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         prePresentBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 
-        prePresentBarrier.image = swapchainImages[imageIndex];
+        prePresentBarrier.image = swapchainInfo.pSwapchainImages[imageIndex];
         VkImageMemoryBarrier *pmemory_barrier = &prePresentBarrier;
         vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0,
             NULL, 1, pmemory_barrier);
 
 
-        err = vkEndCommandBuffer(commandBuffer);
+        VK_CHECK(vkEndCommandBuffer(commandBuffer));
 
         VkSubmitInfo submitInfo = {};
 
@@ -755,7 +661,7 @@ int main()
         VkPipelineStageFlags pipe_stage_flags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
         submitInfo.pWaitDstStageMask = &pipe_stage_flags;
 
-        err = vkQueueSubmit(vulkanInfo.vkQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        VK_CHECK(vkQueueSubmit(vulkanInfo.vkQueue, 1, &submitInfo, VK_NULL_HANDLE));
 
         VkPresentInfoKHR presentInfo = {};
         presentInfo.sType          = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -764,7 +670,7 @@ int main()
         
         presentInfo.pImageIndices = &imageIndex;
 
-        err = vkQueuePresentKHR(vulkanInfo.vkQueue, &presentInfo);
+        VK_CHECK(vkQueuePresentKHR(vulkanInfo.vkQueue, &presentInfo));
 
         vkQueueWaitIdle(vulkanInfo.vkQueue);
 
@@ -777,16 +683,12 @@ int main()
     // Free Resources
 
     // Wait, full stop, before proceeding to free/destroy objects
-    err = vkDeviceWaitIdle(vulkanInfo.vkDevice);
+    VK_CHECK(vkDeviceWaitIdle(vulkanInfo.vkDevice));
 
     vkFreeMemory(vulkanInfo.vkDevice, vertexBufferMemory, pGlobalAllocationCallbacks);
     vkDestroyBuffer(vulkanInfo.vkDevice, pVertexBuffer->buffer, pGlobalAllocationCallbacks);
 
-    vkDestroyFramebuffer(vulkanInfo.vkDevice, framebuffers[0], pGlobalAllocationCallbacks);
-    vkDestroyFramebuffer(vulkanInfo.vkDevice, framebuffers[1], pGlobalAllocationCallbacks);
 
-    vkDestroyImageView(vulkanInfo.vkDevice, imageViews[0], pGlobalAllocationCallbacks);
-    vkDestroyImageView(vulkanInfo.vkDevice, imageViews[1], pGlobalAllocationCallbacks);
 
     vkDestroyPipeline(vulkanInfo.vkDevice, graphicsPipeline, pGlobalAllocationCallbacks);
     vkDestroyPipelineLayout(vulkanInfo.vkDevice, pipelineLayout, pGlobalAllocationCallbacks);
@@ -794,17 +696,23 @@ int main()
 
     vkDestroyRenderPass(vulkanInfo.vkDevice, renderPass, pGlobalAllocationCallbacks);
 
+
+    if (framebuffers != nullptr)
+    {
+        vkDestroyFramebuffer(vulkanInfo.vkDevice, framebuffers[0], pGlobalAllocationCallbacks);
+        vkDestroyFramebuffer(vulkanInfo.vkDevice, framebuffers[1], pGlobalAllocationCallbacks);
+
+        delete [] framebuffers;
+    }
+
+    destroySwapchain(&vulkanInfo, &swapchainInfo, pGlobalAllocationCallbacks);
+
     // Q: If calling reset with release flag on the pool, do you need to free the individual command buffs?
     // A: Reseting the buffer is not the same as freeing it.
     vkResetCommandPool(vulkanInfo.vkDevice, vulkanInfo.vkCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
     vkFreeCommandBuffers(vulkanInfo.vkDevice, vulkanInfo.vkCommandPool, 1, &commandBuffer); 
 
-    vkDestroyCommandPool(vulkanInfo.vkDevice, vulkanInfo.vkCommandPool, pGlobalAllocationCallbacks);
-    vkDestroySwapchainKHR(vulkanInfo.vkDevice, swapchainInfo.swapchain, pGlobalAllocationCallbacks);
-    vkDestroySurfaceKHR(vulkanInfo.vkInstance, swapchainInfo.surface, pGlobalAllocationCallbacks);
-    vkDestroyDevice(vulkanInfo.vkDevice, pGlobalAllocationCallbacks);
-    vkDestroyInstance(vulkanInfo.vkInstance, pGlobalAllocationCallbacks);
+    destroyVulkan(&vulkanInfo, pGlobalAllocationCallbacks);
 
-    std::cout << "Bye Bye" << std::endl;
     return 0;
 }

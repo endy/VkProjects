@@ -16,7 +16,57 @@
 
 
 #include <iostream>
+#include <cassert>
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///   Common Structures
+///////////////////////////////////////////////////////////////////////////////////////////////////
+struct AppInfo
+{
+    const char*     pAppName;
+    const char*     pEngineName;
+
+    uint32_t        apiVersionRequired;
+
+    const char**    ppRequiredInstanceExtensionList;
+    const uint32_t  requiredInstanceExtensionCount;
+    const char**    ppRequiredInstanceLayerList;
+    const uint32_t  requiredInstanceLayerCount;
+    const char**    ppRequiredDeviceExtensionList;
+    const uint32_t  requiredDeviceExtensionCount;
+
+    const VkAllocationCallbacks* pAllocator;
+};
+
+struct VkCoreInfo
+{
+    VkInstance                       vkInstance;
+    VkPhysicalDevice                 vkPhysicalDevice;
+    VkPhysicalDeviceMemoryProperties vkDeviceMemoryProperties;
+    VkDevice                         vkDevice;
+    VkQueue                          vkQueue;
+    VkCommandPool                    vkCommandPool;
+};
+
+struct VkSwapchainInfo
+{
+    VkSurfaceKHR   surface;
+    VkSwapchainKHR swapchain;
+
+    uint32_t       swapchainImageCount;
+    VkImage*       pSwapchainImages;
+    VkImageView*   pSwapchainImageViews;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///   Useful Macros
+///////////////////////////////////////////////////////////////////////////////////////////////////
+#define VK_CHECK(x)  (assert((x) == VK_SUCCESS))
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///   Utility Functions
+///////////////////////////////////////////////////////////////////////////////////////////////////
 void printDeviceMemoryProperties(
     VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties)
 {
@@ -83,7 +133,7 @@ int32_t memoryTypeIndexWithGivenProperties(
         {
             memoryType = i;
             break;
-        }        
+        }
     }
 
     return memoryType;
@@ -207,39 +257,15 @@ bool checkRequiredDeviceExtensionsAvailable(
 }
 
 
-struct AppInfo
-{
-    const char*     pAppName;
-    const char*     pEngineName;
-
-    uint32_t        apiVersionRequired;
-
-    const char**    ppRequiredInstanceExtensionList;
-    const uint32_t  requiredInstanceExtensionCount;
-    const char**    ppRequiredInstanceLayerList;
-    const uint32_t  requiredInstanceLayerCount;
-    const char**    ppRequiredDeviceExtensionList;
-    const uint32_t  requiredDeviceExtensionCount;
-
-    const VkAllocationCallbacks* pAllocator;
-};
-
-struct VkCoreInfo
-{
-    VkInstance                       vkInstance;
-    VkPhysicalDevice                 vkPhysicalDevice;
-    VkPhysicalDeviceMemoryProperties vkDeviceMemoryProperties;
-    VkDevice                         vkDevice;
-    VkQueue                          vkQueue;
-    VkCommandPool                    vkCommandPool;
-};
-
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///   Core Setup Functions
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Heavy loading for Vulkan Initialization:
 //  (0. Required extension support checking)
 //   1. Create instance and query physical device
 //   2. Create device, queue, and command pool
-bool initVulkan(
+bool createVulkan(
     const AppInfo* pAppInfo,
     VkCoreInfo* pVulkanInfo
     )
@@ -345,4 +371,120 @@ bool initVulkan(
     result = vkCreateCommandPool(pVulkanInfo->vkDevice, &commandPoolCreateInfo, pAppInfo->pAllocator, &pVulkanInfo->vkCommandPool);
 
     return true;
+}
+
+void destroyVulkan(
+    VkCoreInfo* pVulkanInfo,
+    const VkAllocationCallbacks* pAllocator)
+{
+    vkDestroyCommandPool(pVulkanInfo->vkDevice, pVulkanInfo->vkCommandPool, pAllocator);
+    vkDestroyDevice(pVulkanInfo->vkDevice, pAllocator);
+    vkDestroyInstance(pVulkanInfo->vkInstance, pAllocator);
+}
+
+
+void createSwapchain(
+    VkCoreInfo*                  pVulkanInfo,
+    HINSTANCE                    hInstance,
+    HWND                         hWnd,
+    const VkAllocationCallbacks* pAllocator,
+    VkSwapchainInfo*             pSwapchainInfo)
+{
+    VkWin32SurfaceCreateInfoKHR surfaceCreateInfoKHR = {};
+
+    surfaceCreateInfoKHR.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    surfaceCreateInfoKHR.hinstance = hInstance;
+    surfaceCreateInfoKHR.hwnd = hWnd;
+
+    VkResult result = vkCreateWin32SurfaceKHR(pVulkanInfo->vkInstance, &surfaceCreateInfoKHR, pAllocator, &pSwapchainInfo->surface);
+
+    VkSurfaceCapabilitiesKHR surfaceCapabilities;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pVulkanInfo->vkPhysicalDevice, pSwapchainInfo->surface, &surfaceCapabilities);
+
+    uint32_t surfaceFormatCount = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(pVulkanInfo->vkPhysicalDevice, pSwapchainInfo->surface, &surfaceFormatCount, NULL);
+    VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[surfaceFormatCount];
+    vkGetPhysicalDeviceSurfaceFormatsKHR(pVulkanInfo->vkPhysicalDevice, pSwapchainInfo->surface, &surfaceFormatCount, &surfaceFormats[0]);
+
+    uint32_t presentModeCount = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(pVulkanInfo->vkPhysicalDevice, pSwapchainInfo->surface, &presentModeCount, NULL);
+    VkPresentModeKHR* presentModes = new VkPresentModeKHR[presentModeCount];
+    vkGetPhysicalDeviceSurfacePresentModesKHR(pVulkanInfo->vkPhysicalDevice, pSwapchainInfo->surface, &presentModeCount, &presentModes[0]);
+
+    VkBool32 supported = FALSE;
+    vkGetPhysicalDeviceSurfaceSupportKHR(pVulkanInfo->vkPhysicalDevice, 0, pSwapchainInfo->surface, &supported);
+
+    VkSwapchainCreateInfoKHR swapchainCreateInfoKHR = {};
+    swapchainCreateInfoKHR.sType                = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    swapchainCreateInfoKHR.minImageCount        = surfaceCapabilities.minImageCount;
+    swapchainCreateInfoKHR.surface              = pSwapchainInfo->surface;
+    swapchainCreateInfoKHR.imageExtent.width    = surfaceCapabilities.currentExtent.width;
+    swapchainCreateInfoKHR.imageExtent.height   = surfaceCapabilities.currentExtent.height;
+    swapchainCreateInfoKHR.imageFormat          = VK_FORMAT_B8G8R8A8_UNORM;
+    swapchainCreateInfoKHR.imageUsage           = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    swapchainCreateInfoKHR.imageColorSpace      = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    swapchainCreateInfoKHR.imageArrayLayers     = 1;
+    swapchainCreateInfoKHR.compositeAlpha       = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swapchainCreateInfoKHR.preTransform         = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+    swapchainCreateInfoKHR.presentMode          = VK_PRESENT_MODE_FIFO_KHR;
+
+    VK_CHECK(vkCreateSwapchainKHR(pVulkanInfo->vkDevice, &swapchainCreateInfoKHR, NULL, &pSwapchainInfo->swapchain));
+
+    delete[] surfaceFormats;
+    delete[] presentModes;
+
+
+    VK_CHECK(vkGetSwapchainImagesKHR(pVulkanInfo->vkDevice, pSwapchainInfo->swapchain, &pSwapchainInfo->swapchainImageCount, NULL));
+
+    pSwapchainInfo->pSwapchainImages = new VkImage[pSwapchainInfo->swapchainImageCount];
+    VK_CHECK(vkGetSwapchainImagesKHR(pVulkanInfo->vkDevice, pSwapchainInfo->swapchain, &pSwapchainInfo->swapchainImageCount, &pSwapchainInfo->pSwapchainImages[0]));
+
+
+    pSwapchainInfo->pSwapchainImageViews = new VkImageView[pSwapchainInfo->swapchainImageCount];
+
+    for (uint32_t i = 0; i < pSwapchainInfo->swapchainImageCount; i++)
+    {
+        VkImageViewCreateInfo imageViewCreateInfo = {};
+
+        imageViewCreateInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        imageViewCreateInfo.image    = pSwapchainInfo->pSwapchainImages[i];
+        imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        imageViewCreateInfo.format   = VK_FORMAT_B8G8R8A8_UNORM;
+
+        imageViewCreateInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+        imageViewCreateInfo.subresourceRange.layerCount     = 1;
+        imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
+        imageViewCreateInfo.subresourceRange.levelCount     = 1;
+
+        VK_CHECK(vkCreateImageView(pVulkanInfo->vkDevice, &imageViewCreateInfo, pAllocator, &pSwapchainInfo->pSwapchainImageViews[i]));
+    }
+
+}
+
+
+void destroySwapchain(
+    const VkCoreInfo* pVulkanInfo,
+    VkSwapchainInfo*  pSwapchainInfo,
+    const VkAllocationCallbacks* pAllocator)
+{
+    if (pSwapchainInfo->pSwapchainImageViews != nullptr)
+    {
+        for (uint32_t i = 0; i < pSwapchainInfo->swapchainImageCount; i++)
+        {
+            vkDestroyImageView(pVulkanInfo->vkDevice, pSwapchainInfo->pSwapchainImageViews[i], pAllocator);
+        }
+
+        delete [] pSwapchainInfo->pSwapchainImageViews;
+        pSwapchainInfo->pSwapchainImageViews = nullptr;
+    }
+
+    if (pSwapchainInfo->pSwapchainImages != nullptr)
+    {
+        delete [] pSwapchainInfo->pSwapchainImages;
+    }
+
+    vkDestroySwapchainKHR(pVulkanInfo->vkDevice, pSwapchainInfo->swapchain, pAllocator);
+    vkDestroySurfaceKHR(pVulkanInfo->vkInstance, pSwapchainInfo->surface, pAllocator);
+
 }
