@@ -47,7 +47,7 @@ void VkPipelineBuilder::Destroy()
 bool VkPipelineBuilder::Init()
 {
     m_vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    SetVertexState();  // use defaults
+    SetVertexState(true);  // use defaults
 
     m_inputAssemblyState.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     m_inputAssemblyState.topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -131,22 +131,30 @@ bool VkPipelineBuilder::Init()
     return true;
 }
 
-void VkPipelineBuilder::SetVertexState()
+void VkPipelineBuilder::SetVertexState(
+    bool usesVertexBuffer)
 {
-    m_vertexAttributeDescription.binding  = 0;
-    m_vertexAttributeDescription.format   = VK_FORMAT_R32G32_SFLOAT;
-    m_vertexAttributeDescription.location = 0;
-    m_vertexAttributeDescription.offset   = 0;
+    if (usesVertexBuffer == true)
+    {
+        m_vertexAttributeDescription.binding  = 0;
+        m_vertexAttributeDescription.format   = VK_FORMAT_R32G32_SFLOAT;
+        m_vertexAttributeDescription.location = 0;
+        m_vertexAttributeDescription.offset   = 0;
 
-    m_vertexBindingDescription.binding   = 0;
-    m_vertexBindingDescription.stride    = 8;
-    m_vertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        m_vertexBindingDescription.binding   = 0;
+        m_vertexBindingDescription.stride    = 8;
+        m_vertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-    m_vertexInputState.vertexBindingDescriptionCount   = 1;
-    m_vertexInputState.pVertexBindingDescriptions      = &m_vertexBindingDescription;
-    m_vertexInputState.vertexAttributeDescriptionCount = 1;
-    m_vertexInputState.pVertexAttributeDescriptions    = &m_vertexAttributeDescription;
-
+        m_vertexInputState.vertexBindingDescriptionCount = 1;
+        m_vertexInputState.pVertexBindingDescriptions = &m_vertexBindingDescription;
+        m_vertexInputState.vertexAttributeDescriptionCount = 1;
+        m_vertexInputState.pVertexAttributeDescriptions = &m_vertexAttributeDescription;
+    }
+    else
+    {
+        m_vertexInputState.vertexBindingDescriptionCount   = 0;
+        m_vertexInputState.vertexAttributeDescriptionCount = 0;
+    }
 }
 
 void VkPipelineBuilder::SetViewportState(

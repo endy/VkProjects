@@ -24,16 +24,14 @@ public:
 
     void SetShaderState(VkShaderModule vertexShader, VkShaderModule fragmentShader);
 
+    void SetVertexState(bool usesVertexBuffer);
+
 private:
     VkPipelineBuilder(const VkPipelineBuilder&); // disallow copy constructor
 
     VkPipelineBuilder(VkDevice device, const VkAllocationCallbacks* pAllocator);
 
     virtual ~VkPipelineBuilder();
-
-
-    // Add to public interface when defaults are not good enough
-    void SetVertexState();
 
     bool Init();
 

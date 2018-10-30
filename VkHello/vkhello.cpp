@@ -390,6 +390,7 @@ int main()
     VkCommandBuffer commandBuffer = {};
     vkAllocateCommandBuffers(vulkanInfo.vkDevice, &commandBufferAllocateInfo, &commandBuffer);
 
+    ///@todo Create Renderpass / Subpass Generator
     // Create Render Pass
     VkAttachmentDescription colorAttachmentDescription = {};
     colorAttachmentDescription.format = VK_FORMAT_B8G8R8A8_UNORM;

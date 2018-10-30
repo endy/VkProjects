@@ -14,6 +14,13 @@
 #include "IvyWindow.h"
 #include "SimpleAllocator.h"
 
+#include "VkBuilder.h"
+
+
+///@todo Remove once the shader module setup is refactored out
+#include <fstream>
+#include <vector>
+
 const char* RequiredInstanceExtensionNames[] =
 {
     "VK_EXT_debug_report",
@@ -55,6 +62,105 @@ const AppInfo appInfo =
 };
 
 
+
+///@todo decouple descriptor layout from push constant layout
+///      build one descriptor set up front, use it for everything
+///      push constants tied to programs, so pipeline layout + program is a uint
+void createPipelineLayout(
+    VkDevice vkDevice,
+    VkDescriptorSetLayoutBinding* pBindings,
+    uint32_t                      bindingCount,
+    VkPushConstantRange*          pPushConstantRanges,
+    uint32_t                      pushConstantRangeCount,
+    VkDescriptorSetLayout*        pDescriptorSetLayout,
+    VkPipelineLayout*             pPipelineLayout)
+{
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+    descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptorSetLayoutCreateInfo.pBindings    = pBindings;
+    descriptorSetLayoutCreateInfo.bindingCount = bindingCount;
+
+    VK_CHECK(vkCreateDescriptorSetLayout(vkDevice, &descriptorSetLayoutCreateInfo, GetSimpleAllocator(), pDescriptorSetLayout));
+
+    VkPipelineLayoutCreateInfo layoutCreateInfo =
+    {
+        VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        NULL,
+        0,
+        1,
+        pDescriptorSetLayout,
+        0,
+        NULL
+    };
+
+    layoutCreateInfo.pPushConstantRanges    = pPushConstantRanges;
+    layoutCreateInfo.pushConstantRangeCount = pushConstantRangeCount;
+
+    VK_CHECK(vkCreatePipelineLayout(vkDevice, &layoutCreateInfo, GetSimpleAllocator(), pPipelineLayout));
+}
+
+///@todo create shader to wrap SPV loading & module creation, create program to group them?
+VkResult createGraphicsPipeline(
+    VkDevice device,
+    VkPipelineLayout layout,
+    VkRenderPass renderPass,
+    uint32_t     subpassIndex,
+    VkPipeline* pPipeline)
+{
+
+    VkResult vkResult = VK_SUCCESS;
+
+    std::ifstream vsFile = std::ifstream("vert.spv", std::ios::ate | std::ios::binary);
+
+    size_t shader_size = static_cast<size_t>(vsFile.tellg());
+    std::vector<char> vert_shader(shader_size);
+    vsFile.seekg(0);
+    vsFile.read(vert_shader.data(), shader_size);
+    vsFile.close();
+
+    std::ifstream fsFile = std::ifstream("frag.spv", std::ios::ate | std::ios::binary);
+
+    shader_size = static_cast<size_t>(fsFile.tellg());
+    std::vector<char> frag_shader(shader_size);
+    fsFile.seekg(0);
+    fsFile.read(frag_shader.data(), shader_size);
+    fsFile.close();
+
+    VkShaderModule vsModule = 0;
+    VkShaderModule fsModule = 0;
+
+    VkShaderModuleCreateInfo shaderModuleCreateInfo = {};
+
+    shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+
+    shaderModuleCreateInfo.codeSize = vert_shader.size();
+    shaderModuleCreateInfo.pCode = (uint32_t*)vert_shader.data();
+    vkResult = vkCreateShaderModule(device, &shaderModuleCreateInfo, GetSimpleAllocator(), &vsModule);
+
+    shaderModuleCreateInfo.codeSize = frag_shader.size();
+    shaderModuleCreateInfo.pCode = (uint32_t*)frag_shader.data();
+    vkResult = vkCreateShaderModule(device, &shaderModuleCreateInfo, GetSimpleAllocator(), &fsModule);
+
+    VkPipelineBuilder* pBuilder = VkPipelineBuilder::Create(device, GetSimpleAllocator());
+
+    pBuilder->SetViewportState(256, 256);
+    pBuilder->SetShaderState(vsModule, fsModule);
+    pBuilder->SetVertexState(false);
+
+    *pPipeline = pBuilder->GetPipeline(layout, renderPass, subpassIndex);
+
+    pBuilder->Destroy();
+
+
+    // Free shader modules no longer needed
+    vkDestroyShaderModule(device, vsModule, GetSimpleAllocator());
+    vkDestroyShaderModule(device, fsModule, GetSimpleAllocator());
+
+    return vkResult;
+}
+
+
+
 int main()
 {
     Ivy::IvyWindow* pWindow = Ivy::IvyWindow::Create(256, 256);
@@ -81,7 +187,7 @@ int main()
     vkAllocateCommandBuffers(vulkanInfo.vkDevice, &commandBufferAllocateInfo, &commandBuffer);
 
 
-
+    ///@todo Create Renderpass / Subpass Generator
     // Create Render Pass
     VkAttachmentDescription colorAttachmentDescription = {};
     colorAttachmentDescription.format         = VK_FORMAT_B8G8R8A8_UNORM;
@@ -129,6 +235,21 @@ int main()
         VK_CHECK(vkCreateFramebuffer(vulkanInfo.vkDevice, &framebufferCreateInfo, GetSimpleAllocator(), &framebuffers[i]));
     }
 
+    // Create Pipeline
+
+    VkDescriptorSetLayout descriptorSetLayout;
+    VkPipelineLayout      pipelineLayout;
+
+    VkPushConstantRange pushConstantRange = {};
+    pushConstantRange.size   = 16;
+    pushConstantRange.offset = 0;
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    createPipelineLayout(vulkanInfo.vkDevice, NULL, 0, &pushConstantRange, 1, &descriptorSetLayout, &pipelineLayout);
+
+    VkPipeline graphicsPipeline;
+    createGraphicsPipeline(vulkanInfo.vkDevice, pipelineLayout, renderPass, 0, &graphicsPipeline);
+
 
     pWindow->Show();
 
@@ -170,6 +291,9 @@ int main()
 
         vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
@@ -226,6 +350,15 @@ int main()
 
         pWindow->ProcessMsg(&quit);
     }
+
+    if (framebuffers != nullptr)
+    {
+        vkDestroyFramebuffer(vulkanInfo.vkDevice, framebuffers[0], GetSimpleAllocator());
+        vkDestroyFramebuffer(vulkanInfo.vkDevice, framebuffers[1], GetSimpleAllocator());
+
+        delete[] framebuffers;
+    }
+
 
     destroySwapchain(&vulkanInfo, &swapchainInfo, GetSimpleAllocator());
     destroyVulkan(&vulkanInfo, GetSimpleAllocator());

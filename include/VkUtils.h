@@ -488,3 +488,4 @@ void destroySwapchain(
     vkDestroySurfaceKHR(pVulkanInfo->vkInstance, pSwapchainInfo->surface, pAllocator);
 
 }
+
