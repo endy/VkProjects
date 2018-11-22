@@ -9,6 +9,7 @@
 
 #include "VkBuilder.h"
 
+
 VkPipelineBuilder::VkPipelineBuilder(
     VkDevice vkDevice,
     const VkAllocationCallbacks* pAllocator)
@@ -99,12 +100,14 @@ bool VkPipelineBuilder::Init()
     m_colorBlendState.attachmentCount = 1;
     m_colorBlendState.pAttachments    = &m_blendAttachment;
 
+    m_depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+
+
+    m_tessellationState.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
 
     m_pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     m_pipelineCreateInfo.flags = 0;
 
-    m_depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    m_tessellationState.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
 
     ///@todo Pipeline cache?  
     m_pipelineCreateInfo.basePipelineHandle = 0;
@@ -120,10 +123,12 @@ bool VkPipelineBuilder::Init()
     m_pipelineCreateInfo.pColorBlendState    = &m_colorBlendState;
 
 
+    // Optional, may be ignored
+    m_pipelineCreateInfo.pTessellationState = &m_tessellationState;
+
     // Not supported yet
     m_pipelineCreateInfo.pDepthStencilState  = NULL;
     m_pipelineCreateInfo.pDynamicState       = NULL;
-    m_pipelineCreateInfo.pTessellationState  = NULL;
 
 
     m_pipelineCreateInfo.pStages    = &m_stages[0];
@@ -155,6 +160,12 @@ void VkPipelineBuilder::SetVertexState(
         m_vertexInputState.vertexBindingDescriptionCount   = 0;
         m_vertexInputState.vertexAttributeDescriptionCount = 0;
     }
+}
+
+void VkPipelineBuilder::SetTessellationState(
+    uint32_t patchControlPoints)
+{
+    m_tessellationState.patchControlPoints = patchControlPoints;
 }
 
 void VkPipelineBuilder::SetViewportState(
@@ -189,6 +200,43 @@ void VkPipelineBuilder::SetShaderState(
     m_numStages = 2;
 }
 
+void VkPipelineBuilder::SetShaderState(
+    VkShaderModule vertexShader,
+    VkShaderModule tessControlShader,
+    VkShaderModule tessEvalShader,
+    VkShaderModule fragmentShader)
+{
+    m_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    m_stages[0].flags = 0;
+    m_stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    m_stages[0].module = vertexShader;
+    m_stages[0].pName = "main";
+    m_stages[0].pSpecializationInfo = NULL;
+
+    m_stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    m_stages[1].flags = 0;
+    m_stages[1].stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+    m_stages[1].module = tessControlShader;
+    m_stages[1].pName = "main";
+    m_stages[1].pSpecializationInfo = NULL;
+
+    m_stages[2].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    m_stages[2].flags = 0;
+    m_stages[2].stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+    m_stages[2].module = tessEvalShader;
+    m_stages[2].pName = "main";
+    m_stages[2].pSpecializationInfo = NULL;
+
+    m_stages[3].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    m_stages[3].flags = 0;
+    m_stages[3].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    m_stages[3].module = fragmentShader;
+    m_stages[3].pName = "main";
+    m_stages[3].pSpecializationInfo = NULL;
+
+    m_numStages = 4;
+}
+
 VkPipeline VkPipelineBuilder::GetPipeline(
     VkPipelineLayout layout,
     VkRenderPass renderPass,
@@ -202,9 +250,19 @@ VkPipeline VkPipelineBuilder::GetPipeline(
     // Uncached pipeline create state
     m_pipelineCreateInfo.stageCount = m_numStages;
 
+    ///@todo Future cleanup - Handle inplicit tess vs non-tess state
+    if (m_numStages >= 4)
+    {
+        m_inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+    }
+    else
+    {
+        m_inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    }
 
     VkPipeline pipeline;
-    VkResult vkResult = vkCreateGraphicsPipelines(m_device, 0, 1, &m_pipelineCreateInfo, m_pAllocator, &pipeline);
+    ///@todo use VK_CHECK in this file
+    vkCreateGraphicsPipelines(m_device, 0, 1, &m_pipelineCreateInfo, m_pAllocator, &pipeline);
 
     return pipeline;
 }

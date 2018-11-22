@@ -311,6 +311,10 @@ bool createVulkan(
         return false;
     }
 
+    VkPhysicalDeviceFeatures2 physicalDeviceFeatures = {};
+    physicalDeviceFeatures.sType                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    vkGetPhysicalDeviceFeatures(pVulkanInfo->vkPhysicalDevice, &physicalDeviceFeatures.features);
+
     vkGetPhysicalDeviceMemoryProperties(pVulkanInfo->vkPhysicalDevice, &pVulkanInfo->vkDeviceMemoryProperties);
 
     uint32_t queueFamilyPropertiesCount;
@@ -355,6 +359,10 @@ bool createVulkan(
     deviceCreateInfo.queueCreateInfoCount    = 1;
     deviceCreateInfo.ppEnabledExtensionNames = pAppInfo->ppRequiredDeviceExtensionList;
     deviceCreateInfo.enabledExtensionCount   = pAppInfo->requiredDeviceExtensionCount;
+
+    // Enable all features
+    deviceCreateInfo.pEnabledFeatures = &physicalDeviceFeatures.features;
+
 
     vkCreateDevice(pVulkanInfo->vkPhysicalDevice, &deviceCreateInfo, pAppInfo->pAllocator, &pVulkanInfo->vkDevice);
 

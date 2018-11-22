@@ -100,16 +100,13 @@ void createPipelineLayout(
 }
 
 ///@todo create shader to wrap SPV loading & module creation, create program to group them?
-VkResult createGraphicsPipeline(
+void createGraphicsPipeline(
     VkDevice device,
     VkPipelineLayout layout,
     VkRenderPass renderPass,
     uint32_t     subpassIndex,
     VkPipeline* pPipeline)
 {
-
-    VkResult vkResult = VK_SUCCESS;
-
     std::ifstream vsFile = std::ifstream("vert.spv", std::ios::ate | std::ios::binary);
 
     size_t shader_size = static_cast<size_t>(vsFile.tellg());
@@ -117,6 +114,24 @@ VkResult createGraphicsPipeline(
     vsFile.seekg(0);
     vsFile.read(vert_shader.data(), shader_size);
     vsFile.close();
+
+
+    std::ifstream tescFile = std::ifstream("tesc.spv", std::ios::ate | std::ios::binary);
+
+    shader_size = static_cast<size_t>(tescFile.tellg());
+    std::vector<char> tesc_shader(shader_size);
+    tescFile.seekg(0);
+    tescFile.read(tesc_shader.data(), shader_size);
+    tescFile.close();
+
+    std::ifstream teseFile = std::ifstream("tese.spv", std::ios::ate | std::ios::binary);
+
+    shader_size = static_cast<size_t>(teseFile.tellg());
+    std::vector<char> tese_shader(shader_size);
+    teseFile.seekg(0);
+    teseFile.read(tese_shader.data(), shader_size);
+    teseFile.close();
+
 
     std::ifstream fsFile = std::ifstream("frag.spv", std::ios::ate | std::ios::binary);
 
@@ -126,8 +141,10 @@ VkResult createGraphicsPipeline(
     fsFile.read(frag_shader.data(), shader_size);
     fsFile.close();
 
-    VkShaderModule vsModule = 0;
-    VkShaderModule fsModule = 0;
+    VkShaderModule vsModule  = 0;
+    VkShaderModule tcsModule = 0;
+    VkShaderModule tesModule = 0;
+    VkShaderModule fsModule  = 0;
 
     VkShaderModuleCreateInfo shaderModuleCreateInfo = {};
 
@@ -135,17 +152,28 @@ VkResult createGraphicsPipeline(
 
     shaderModuleCreateInfo.codeSize = vert_shader.size();
     shaderModuleCreateInfo.pCode = (uint32_t*)vert_shader.data();
-    vkResult = vkCreateShaderModule(device, &shaderModuleCreateInfo, GetSimpleAllocator(), &vsModule);
+    VK_CHECK(vkCreateShaderModule(device, &shaderModuleCreateInfo, GetSimpleAllocator(), &vsModule));
+
+    shaderModuleCreateInfo.codeSize = tesc_shader.size();
+    shaderModuleCreateInfo.pCode = (uint32_t*)tesc_shader.data();
+    VK_CHECK(vkCreateShaderModule(device, &shaderModuleCreateInfo, GetSimpleAllocator(), &tcsModule));
+
+    shaderModuleCreateInfo.codeSize = tese_shader.size();
+    shaderModuleCreateInfo.pCode = (uint32_t*)tese_shader.data();
+    VK_CHECK(vkCreateShaderModule(device, &shaderModuleCreateInfo, GetSimpleAllocator(), &tesModule));
 
     shaderModuleCreateInfo.codeSize = frag_shader.size();
     shaderModuleCreateInfo.pCode = (uint32_t*)frag_shader.data();
-    vkResult = vkCreateShaderModule(device, &shaderModuleCreateInfo, GetSimpleAllocator(), &fsModule);
+    VK_CHECK(vkCreateShaderModule(device, &shaderModuleCreateInfo, GetSimpleAllocator(), &fsModule));
+
 
     VkPipelineBuilder* pBuilder = VkPipelineBuilder::Create(device, GetSimpleAllocator());
 
     pBuilder->SetViewportState(256, 256);
-    pBuilder->SetShaderState(vsModule, fsModule);
+    pBuilder->SetShaderState(vsModule, tcsModule, tesModule, fsModule);
     pBuilder->SetVertexState(false);
+
+    pBuilder->SetTessellationState(3);
 
     *pPipeline = pBuilder->GetPipeline(layout, renderPass, subpassIndex);
 
@@ -153,10 +181,10 @@ VkResult createGraphicsPipeline(
 
 
     // Free shader modules no longer needed
-    vkDestroyShaderModule(device, vsModule, GetSimpleAllocator());
-    vkDestroyShaderModule(device, fsModule, GetSimpleAllocator());
-
-    return vkResult;
+    vkDestroyShaderModule(device, vsModule,  GetSimpleAllocator());
+    vkDestroyShaderModule(device, tcsModule, GetSimpleAllocator());
+    vkDestroyShaderModule(device, tesModule, GetSimpleAllocator());
+    vkDestroyShaderModule(device, fsModule,  GetSimpleAllocator());
 }
 
 
@@ -164,6 +192,7 @@ VkResult createGraphicsPipeline(
 int main()
 {
     Ivy::IvyWindow* pWindow = Ivy::IvyWindow::Create(256, 256);
+    pWindow->SetWindowName(appInfo.pAppName);
 
     // Init Vulkan
 
@@ -344,7 +373,7 @@ int main()
 
         VK_CHECK(vkQueuePresentKHR(vulkanInfo.vkQueue, &presentInfo));
 
-        vkQueueWaitIdle(vulkanInfo.vkQueue);
+        VK_CHECK(vkQueueWaitIdle(vulkanInfo.vkQueue));
 
         vkDestroySemaphore(vulkanInfo.vkDevice, presentCompleteSemaphore, GetSimpleAllocator());
 

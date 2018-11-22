@@ -7,7 +7,8 @@ layout(push_constant) uniform blend_consts {
    vec4 scalar;
 } blend_const;
 
+flat layout(location = 0) in vec2 tesData;
 
 void main() {
-    outColor = vec4(0.7, 0.1, 0.7, 1.0);
+    outColor = vec4(tesData.x, 0.1, tesData.y, 1.0);
 }

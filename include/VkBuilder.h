@@ -9,6 +9,8 @@
 
 #pragma once
 
+///@todo Configure this for portability
+#define VK_USE_PLATFORM_WIN32_KHR 1
 #include "vulkan\vulkan.h"
 
 class VkPipelineBuilder
@@ -22,9 +24,15 @@ public:
 
     void SetViewportState(uint32_t width, uint32_t height);
 
-    void SetShaderState(VkShaderModule vertexShader, VkShaderModule fragmentShader);
+    void SetShaderState(VkShaderModule vertexShader,
+                        VkShaderModule fragmentShader);
+    void SetShaderState(VkShaderModule vertexShader,
+                        VkShaderModule tessControltShader,
+                        VkShaderModule tessEvalShader,
+                        VkShaderModule fragmentShader);
 
     void SetVertexState(bool usesVertexBuffer);
+    void SetTessellationState(uint32_t patchControlPoints);
 
 private:
     VkPipelineBuilder(const VkPipelineBuilder&); // disallow copy constructor
@@ -52,10 +60,12 @@ private:
     VkPipelineRasterizationStateCreateInfo    m_rasterizationState;
     VkPipelineColorBlendStateCreateInfo       m_colorBlendState;
 
+    // Optional
+    VkPipelineTessellationStateCreateInfo     m_tessellationState;
+
     // Defaults only
     VkPipelineMultisampleStateCreateInfo      m_multisampleState;
     // Unsupported for now
-    VkPipelineTessellationStateCreateInfo     m_tessellationState;
     VkPipelineDepthStencilStateCreateInfo     m_depthStencilState;
     VkPipelineDynamicStateCreateInfo          m_dynamicState;
 
